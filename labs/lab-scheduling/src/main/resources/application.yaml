@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: lab-scheduling
+  task:
+    scheduling:
+      # Spring Boot's default is 1. Raise it and re-run the demo profile to watch the
+      # heartbeat stop stalling. See docs/scheduling.md, "The pool of one".
+      pool:
+        size: 1
+      thread-name-prefix: "sched-"
+
+logging:
+  level:
+    # Shows task registration and each scheduler hand-off.
+    org.springframework.scheduling: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%-18thread] %-40logger{0} : %msg%n"

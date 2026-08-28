@@ -1,0 +1,20 @@
+# Maven
+target/
+.mvn/timing.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scratch: downloaded Spring sources for reading (see tools/fetch-spring-sources.sh)
+.spring-sources/

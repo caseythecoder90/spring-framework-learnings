@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: lab-events
+  # The labs drive transactions directly; no schema is needed beyond an empty in-memory database.
+  datasource:
+    url: jdbc:h2:mem:events;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+logging:
+  level:
+    org.springframework.context.event: DEBUG
+    org.springframework.transaction.event: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%-18thread] %-40logger{0} : %msg%n"
