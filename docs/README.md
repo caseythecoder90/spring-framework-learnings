@@ -6,10 +6,42 @@ note says it does.
 
 | Note | Lab | Covers |
 |---|---|---|
-| [scheduling.md](scheduling.md) | [`labs/lab-scheduling`](../labs/lab-scheduling) | `@EnableScheduling`, `@Scheduled`, the pool of one, `fixedRate` vs `fixedDelay`, error suppression, scheduler routing |
-| [events.md](events.md) | [`labs/lab-events`](../labs/lab-events) | `ApplicationEventPublisher`, `@EventListener`, ordering and conditions, `@Async`, `@TransactionalEventListener` |
+| **Foundations** | | |
+| [annotations.md](annotations.md) | [`labs/lab-annotations`](../labs/lab-annotations) | `MergedAnnotations`, meta-annotations, `@AliasFor`, search strategies |
+| [proxies.md](proxies.md) | [`labs/lab-proxies`](../labs/lab-proxies) | JDK vs CGLIB, self-invocation, auto-proxy creation, advice ordering |
+| [bean-lifecycle.md](bean-lifecycle.md) | [`labs/lab-lifecycle`](../labs/lab-lifecycle) | callback order, injection styles, circular references, scopes |
+| [startup.md](startup.md) | [`labs/lab-startup`](../labs/lab-startup) | `refresh()` in order, `SmartLifecycle` phases, the bean that misses every `BeanPostProcessor` |
+| **Configuration** | | |
+| [property-binding.md](property-binding.md) | [`labs/lab-binding`](../labs/lab-binding) | relaxed binding, constructor binding, conversion, `@Validated` |
+| [environment.md](environment.md) | [`labs/lab-environment`](../labs/lab-environment) | `PropertySource` precedence, profile expressions, placeholders |
+| [conditions.md](conditions.md) | [`labs/lab-conditions`](../labs/lab-conditions) | `@Conditional`, `@ConditionalOnMissingBean`, auto-configuration ordering |
+| **Web** | | |
+| [web-mvc.md](web-mvc.md) | [`labs/lab-web`](../labs/lab-web) | `DispatcherServlet`, argument resolution, message converters, `@ExceptionHandler` |
+| **Data** | | |
+| [transactions.md](transactions.md) | [`labs/lab-transactions`](../labs/lab-transactions) | propagation, rollback rules, the rollback-only trap, `readOnly` |
+| **Execution** | | |
+| [scheduling.md](scheduling.md) | [`labs/lab-scheduling`](../labs/lab-scheduling) | `@EnableScheduling`, the pool of one, `fixedRate` vs `fixedDelay`, error suppression |
+| [events.md](events.md) | [`labs/lab-events`](../labs/lab-events) | `ApplicationEventPublisher`, `@EventListener`, `@Async`, `@TransactionalEventListener` |
+| [async.md](async.md) | [`labs/lab-async`](../labs/lab-async) | executor resolution, queue-before-pool, what `@Async` gives up |
+| [retry.md](retry.md) | [`labs/lab-retry`](../labs/lab-retry) | native `@Retryable`, backoff and jitter, `@ConcurrencyLimit` |
+| [caching.md](caching.md) | [`labs/lab-caching`](../labs/lab-caching) | key generation and collisions, `condition` vs `unless`, the silent no-ops |
+| **Testing** | | |
+| [testing.md](testing.md) | [`labs/lab-testing`](../labs/lab-testing) | the context cache and its key, bean overrides, transactional tests |
+
+Plus [reading-the-source.md](reading-the-source.md), which is method rather than feature.
 
 Version under study: **Spring Framework 7.0.9 / Spring Boot 4.1.1**, pinned in the root `pom.xml`.
+
+---
+
+## Where to start
+
+The tracks are ordered, and the order matters. **Foundations first** — three of the four notes in
+every other track come back to the proxy model or the annotation model, and reading those two first
+turns most of the rest into "oh, that again".
+
+After Foundations, take whichever track matches what you are working on. Configuration and Data are
+the two that pay off fastest in a code review.
 
 ---
 
@@ -36,7 +68,7 @@ timing genuinely is the subject, assert lower bounds and differences rather than
 **4. Record what surprised you.** A note that only restates the reference documentation is not worth
 keeping. The parts worth writing down are the ones you had wrong beforehand.
 
-This project has already produced three of those:
+The ones this project has produced so far:
 
 - The `SCHEDULED_ANNOTATION_PROCESSOR_BEAN_NAME` **value** changed in Framework 7. Code that
   hard-codes the string instead of the constant breaks on upgrade.
@@ -44,6 +76,16 @@ This project has already produced three of those:
   registered — but prototype-scoped beans get a fresh instance per event.
 - Two `@TransactionalEventListener` methods in the same phase with no `@Order` run in an
   unspecified order. The first draft of that test asserted an order that happened to hold once.
+- `@ConditionalOnMissingBean` between two of your own `@Configuration` classes does not quietly pick
+  one. In the unlucky order it registers **both**, and the failure surfaces later as
+  `NoUniqueBeanDefinitionException` from an injection point that looks unrelated.
+- Relaxed binding does not give you `MY_SERVICE_READTIMEOUT` on its own. That mapping comes from
+  `SystemEnvironmentPropertyMapper`, which only applies to a property source that declares itself
+  to hold environment variables — the same key in an `application.properties` binds to nothing.
+- A single `@ExceptionHandler(RuntimeException.class)` on a controller shadows `@ResponseStatus`,
+  `ResponseStatusException` **and** every `@ControllerAdvice`, for that controller only.
+- A servlet filter's `catch` block sees a `ServletException`, not the exception the controller
+  actually threw. The one you want is one `getCause()` away.
 
 ---
 
@@ -54,8 +96,8 @@ cp docs/TEMPLATE.md docs/<feature>.md
 cp -r labs/lab-events labs/lab-<feature>    # then strip it back
 ```
 
-Register the module in the root `pom.xml`, add a row to the table above, and point the note and the
-lab at each other.
+Register the module in the root `pom.xml`, add a row to the table above, add an entry to
+[`web/src/data/topics.ts`](../web/src/data/topics.ts), and point the note and the lab at each other.
 
 Keep each lab a **separate Maven module**. Isolated contexts, isolated dependencies, and a lab that
 needs JPA does not slow down one that needs nothing.
@@ -70,6 +112,9 @@ needs JPA does not slow down one that needs nothing.
 - `@SpringJUnitConfig` with a nested `@Configuration` for plain Framework behaviour;
   `ApplicationContextRunner` when the subject is one of Boot's auto-configured defaults. Keeping
   those apart makes it obvious which layer an opinion comes from.
+- Where the subject is a real transaction, use a real database. `labs/lab-transactions` runs against
+  an embedded H2 with a real `JdbcTransactionManager`, because a mock transaction manager would let
+  a wrong note pass.
 - `@DirtiesContext(classMode = AFTER_CLASS)` on any test whose beans keep running after it.
 
 ---
@@ -78,11 +123,17 @@ needs JPA does not slow down one that needs nothing.
 
 Features worth the same treatment, roughly in order of how often they surprise people:
 
-- `@Async` and `AsyncConfigurer` in their own right (thread pools, `CompletableFuture`, exceptions)
-- `@Transactional`: propagation, self-invocation, proxy modes
-- Bean lifecycle and `BeanPostProcessor` ordering
-- `@Configuration` `proxyBeanMethods` and what the CGLIB enhancement actually does
-- Conditional evaluation: `@Conditional`, auto-configuration ordering, `ApplicationContextRunner`
-- `ApplicationContext` startup phases and `SmartLifecycle`
-- Caching: `@Cacheable` key generation and the self-invocation problem again
-- Virtual threads in Boot 4: what `spring.threads.virtual.enabled` actually swaps out
+- **`JdbcTemplate` and `DataSource`** — connection handling, pool exhaustion, and how a vendor
+  `SQLException` becomes a `DataAccessException`
+- **Calling other services** — `RestClient` and HTTP interface clients: the timeouts that are not
+  set by default, error decoding, and connection pools
+- **Isolation levels** — dirty reads, non-repeatable reads and phantoms, and which level actually
+  prevents which, proved against a real database
+- **Hibernate's persistence context** — flush timing, dirty checking, lazy loading, and where N+1
+  comes from
+- **The security filter chain** — where authentication actually happens, and why it being a filter
+  rather than an interceptor changes error handling
+- **Virtual threads in Boot 4** — what `spring.threads.virtual.enabled` actually swaps out, and
+  what still pins a carrier thread
+- **`@Configuration(proxyBeanMethods = true)`** — what the CGLIB enhancement does to inter-bean
+  method calls, and what it costs

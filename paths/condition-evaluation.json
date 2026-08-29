@@ -1,0 +1,72 @@
+{
+  "title": "How Boot decides which beans you get",
+  "summary": "From @SpringBootApplication to a bean that exists or does not: candidates are read from a file, sorted, filtered, and then each one's conditions are evaluated twice - once for the class, once per @Bean method.",
+  "entry": "Run any Boot application with --debug. The CONDITIONS EVALUATION REPORT it prints is the output of this path, and the fastest way to answer 'why is that bean not there'. Then put a breakpoint in SpringBootCondition.matches to watch one decision being made.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.annotation.ConfigurationClassPostProcessor",
+      "method": "processConfigBeanDefinitions",
+      "notice": "The BeanFactoryPostProcessor that drives all of this. Note when it runs: definitions only, no instances, which is why every condition is a question about definitions."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.annotation.ConfigurationClassParser",
+      "method": "processConfigurationClass",
+      "notice": "The first line asks the ConditionEvaluator whether to skip the whole class. A class-level condition that says no means the @Bean methods inside are never even read."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.annotation.ConditionEvaluator",
+      "method": "shouldSkip",
+      "notice": "Forty lines that are the whole @Conditional mechanism. Note the phase argument, and that conditions are sorted by order before being asked."
+    },
+    {
+      "module": "spring-boot-autoconfigure",
+      "repo": "boot",
+      "class": "org.springframework.boot.autoconfigure.AutoConfigurationImportSelector",
+      "method": "getCandidateConfigurations",
+      "notice": "Where the candidate list comes from: META-INF/spring/*.AutoConfiguration.imports on every jar. Open one from your own dependencies and read it - it is a plain list of class names.",
+      "file": "core/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/AutoConfigurationImportSelector.java"
+    },
+    {
+      "module": "spring-boot-autoconfigure",
+      "repo": "boot",
+      "class": "org.springframework.boot.autoconfigure.AutoConfigurationSorter",
+      "method": "getInPriorityOrder",
+      "notice": "Alphabetical, then @AutoConfigureOrder, then @AutoConfigureAfter/@AutoConfigureBefore. This sort is the only reason @ConditionalOnMissingBean gives a stable answer between two auto-configurations - and the reason it does not between two of your own @Configuration classes.",
+      "file": "core/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/AutoConfigurationSorter.java"
+    },
+    {
+      "module": "spring-boot-autoconfigure",
+      "repo": "boot",
+      "class": "org.springframework.boot.autoconfigure.AutoConfigurationImportSelector",
+      "method": "getAutoConfigurationEntry",
+      "notice": "Exclusions, then the filters. AutoConfigurationImportFilter is the fast path: OnClassCondition checks the class names from the .imports file against the classpath before anything is parsed, which is what keeps startup quick with a hundred candidates.",
+      "file": "core/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/AutoConfigurationImportSelector.java"
+    },
+    {
+      "module": "spring-boot-autoconfigure",
+      "repo": "boot",
+      "class": "org.springframework.boot.autoconfigure.condition.SpringBootCondition",
+      "method": "matches",
+      "notice": "The base class for every @ConditionalOnX. It calls getMatchOutcome and then records the result, which is exactly what --debug prints. Every Boot condition produces a human-readable reason, and that is a good pattern to copy in your own.",
+      "file": "core/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/condition/SpringBootCondition.java"
+    },
+    {
+      "module": "spring-boot-autoconfigure",
+      "repo": "boot",
+      "class": "org.springframework.boot.autoconfigure.condition.OnBeanCondition",
+      "method": "getConfigurationPhase",
+      "notice": "Two lines, and the reason @ConditionalOnMissingBean works at all: it declares REGISTER_BEAN, so it is evaluated when bean definitions are being registered rather than when the class is being parsed.",
+      "file": "core/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/condition/OnBeanCondition.java"
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader",
+      "method": "loadBeanDefinitionsForBeanMethod",
+      "notice": "The second evaluation. Each @Bean method gets its own shouldSkip call, in the REGISTER_BEAN phase, against a bean factory that already holds everything registered before it."
+    }
+  ],
+  "note": "conditions"
+}

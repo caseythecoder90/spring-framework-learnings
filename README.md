@@ -16,22 +16,25 @@ Read it online: **https://caseythecoder90.github.io/spring-framework-learnings/*
 ## Layout
 
 ```
-docs/                 the notes, one per feature
-  scheduling.md         @Scheduled, end to end
-  events.md             ApplicationEventPublisher, end to end
-  TEMPLATE.md           skeleton for the next feature
-labs/
+docs/                 the notes, one per feature — see docs/README.md for the full index
+  reading-the-source.md   how to study Spring source yourself
+  TEMPLATE.md             skeleton for the next feature
+labs/                 one Maven module per note, and nothing shared but the recorder
   lab-support/          Recorder: what ran, on which thread, when
-  lab-scheduling/       14 tests + a runnable demo app
-  lab-events/           15 tests + a runnable demo app
-  reading-the-source.md how to study Spring source yourself
-paths/                code paths: guided source-reading traces, checked by a test
-labs/
+  lab-annotations/  lab-proxies/  lab-lifecycle/  lab-startup/       foundations
+  lab-binding/      lab-environment/  lab-conditions/                configuration
+  lab-web/                                                            web
+  lab-transactions/                                                    data
+  lab-scheduling/   lab-events/  lab-async/  lab-retry/  lab-caching/  execution
+  lab-testing/                                                         testing
   lab-codepaths/        resolves every class and method in paths/ against the Spring jars
+paths/                code paths: guided source-reading traces, checked by a test
 web/                  Astro + React + TypeScript site that renders docs/ and paths/
 tools/
   fetch-spring-sources.sh   unpack Spring source jars locally to read along
 ```
+
+**265 tests across 16 labs.** `./mvnw test` is the fact-checker for every claim in `docs/`.
 
 ---
 
@@ -77,19 +80,39 @@ grep -rn "class SimpleApplicationEventMulticaster" .spring-sources/
 
 ## What is in here so far
 
-**[`docs/scheduling.md`](docs/scheduling.md)** — `@EnableScheduling` wiring, the six-step
-`TaskSchedulerRouter` lookup, Boot's one-thread default pool and how it starves unrelated jobs, why
-`fixedRate` silently falls behind, why a failing job keeps its schedule and how to find out that it
-is failing, and why `@Scheduled` + `@Transactional` works when so many proxy combinations do not.
+Six tracks. **Read Foundations first** — nearly every surprise in the other five comes back to the
+proxy model or the annotation model, and having those two straight turns most of the rest into "oh,
+that again". After that, take whichever track matches what you are working on.
 
-**[`docs/events.md`](docs/events.md)** — what `publishEvent` really does (wrap, buffer, multicast,
-bubble to the parent), why it is synchronous and unisolated, how `@EventListener` methods get
-registered and matched, what `@Async` costs you, and the `@TransactionalEventListener` behaviour
-that silently does nothing when there is no transaction.
+**Foundations** — [the annotation model](docs/annotations.md), [the proxy
+model](docs/proxies.md), [bean lifecycle and DI](docs/bean-lifecycle.md), [container
+startup](docs/startup.md). How Spring finds an annotation you never wrote, why self-invocation
+skips your advice, the exact order of every lifecycle callback, and the bean that is created too
+early to be proxied at all.
+
+**Configuration** — [property binding](docs/property-binding.md), [environment and
+profiles](docs/environment.md), [conditions and auto-configuration](docs/conditions.md). Where
+relaxed binding stops, why the `Environment` is a list rather than a map, and why
+`@ConditionalOnMissingBean` is reliable in auto-configuration and a coin toss in your own code.
+
+**Web** — [the request lifecycle](docs/web-mvc.md). Every hook a request passes through, why an
+exception in a filter never reaches `@ControllerAdvice`, why an unannotated parameter object is
+bound from query parameters rather than the body, and how `@ExceptionHandler` resolution really
+picks a method.
+
+**Data** — [`@Transactional`](docs/transactions.md). The seven propagation modes proved by what
+survives in a real table, the checked exception that commits, and the caught exception that turns
+the outer commit into an `UnexpectedRollbackException`.
+
+**Execution** — [scheduling](docs/scheduling.md), [application events](docs/events.md),
+[`@Async`](docs/async.md), [retry](docs/retry.md), [caching](docs/caching.md). Boot's one-thread
+scheduler default, why publishing an event is just a method call, the queue that fills before the
+pool grows, and the two `@Cacheable` methods that share entries.
+
+**Testing** — [the test context cache](docs/testing.md). What actually decides how long the suite
+takes, what is in the cache key, and the commit a `@Transactional` test never performs.
 
 Each note ends with a review checklist and a map of the classes to read.
-
----
 
 ## Code paths
 
