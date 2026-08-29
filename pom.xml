@@ -27,6 +27,7 @@
     <module>labs/lab-proxies</module>
     <module>labs/lab-lifecycle</module>
     <module>labs/lab-async</module>
+    <module>labs/lab-retry</module>
     <module>labs/lab-codepaths</module>
   </modules>
 

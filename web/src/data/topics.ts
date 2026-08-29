@@ -156,17 +156,19 @@ export const TOPICS: Topic[] = [
   },
   {
     slug: 'retry',
-    title: 'Spring Retry',
+    title: 'Retry and concurrency limits',
     track: 'execution',
-    blurb: 'Backoff policies, recovery methods, and what happens when retry meets a transaction.',
-    status: 'next',
+    blurb: 'Framework 7 has retry built in. Backoff, jitter, @ConcurrencyLimit, and how it differs from the spring-retry library.',
+    status: 'shipped',
+    lab: 'lab-retry',
+    tests: 10,
   },
   {
     slug: 'caching',
     title: 'Caching',
     track: 'execution',
     blurb: 'Key generation, cache resolution, and self-invocation biting a second time.',
-    status: 'queued',
+    status: 'next',
   },
 ];
 

@@ -1,0 +1,56 @@
+{
+  "title": "How a retry is applied to a method",
+  "summary": "Framework 7 wires retry the same way as everything else: an annotation, an @Import, a BeanPostProcessor, an interceptor. The spec object in the middle is where the backoff arithmetic lives.",
+  "entry": "Put a breakpoint in AbstractRetryInterceptor.invoke on a bean with @Retryable and call a failing method. Every attempt after the first re-enters from the retry loop, not from your caller.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.annotation.EnableResilientMethods",
+      "method": "order",
+      "notice": "The switch, new in Framework 7. Read its attributes: order defaults to LOWEST_PRECEDENCE - 1, which places retry outside most other advice, so a retried call re-runs the transaction rather than retrying inside it."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.annotation.ResilientMethodsConfiguration",
+      "method": "retryAdvisor",
+      "notice": "Registers the two post-processors, retryAdvisor and concurrencyLimitAdvisor, under internal* bean names. Same shape as @EnableScheduling and @EnableAsync; once you have seen it three times you can predict where any feature lives."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.annotation.RetryAnnotationBeanPostProcessor",
+      "method": "setApplicationEventPublisher",
+      "notice": "Adds the retry advisor to any bean carrying the annotation, which is where your bean becomes a proxy and self-invocation stops working. It also takes an ApplicationEventPublisher, so retries can be observed as MethodRetryEvent rather than only logged."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.retry.AbstractRetryInterceptor",
+      "method": "invoke",
+      "notice": "The loop. Read how the initial call is counted: maxRetries is retries AFTER the first attempt, so maxRetries = 2 means the method runs three times."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.retry.MethodRetrySpec",
+      "method": "delay",
+      "notice": "The resolved policy for one method: includes, excludes, predicate, delay, multiplier, jitter and maxDelay, already parsed from the annotation."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.retry.MethodRetryPredicate",
+      "method": "shouldRetry",
+      "notice": "The extension point when includes and excludes are not enough - for example retrying only on a particular SQL state or HTTP status."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.retry.RetryTemplate",
+      "method": "execute",
+      "notice": "The programmatic equivalent, also new in Framework 7 and in spring-core rather than spring-context. Use it where an annotation cannot reach, such as inside a lambda or a self-call."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.resilience.annotation.ConcurrencyLimitBeanPostProcessor",
+      "method": "setEmbeddedValueResolver",
+      "notice": "The other half of the package. @ConcurrencyLimit bounds how many callers may be inside a method at once, blocking the rest rather than rejecting them."
+    }
+  ],
+  "note": "retry"
+}
