@@ -1,0 +1,62 @@
+{
+  "title": "What refresh() does, in the order it does it",
+  "summary": "The twelve steps of AbstractApplicationContext.refresh, and the two places in it that explain most startup bugs: post-processors run in phases, and bean instantiation is nearly the last thing to happen.",
+  "entry": "Put a breakpoint on the first line of AbstractApplicationContext.refresh and step over each numbered call. The comments in that method are the table of contents for this path.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.AbstractApplicationContext",
+      "method": "refresh",
+      "notice": "Read the numbered comments before anything else. Twelve calls, in a synchronized block, and every startup question you have is answered by which of them runs first."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.PostProcessorRegistrationDelegate",
+      "method": "invokeBeanFactoryPostProcessors",
+      "notice": "Three passes, not one: BeanDefinitionRegistryPostProcessors that are PriorityOrdered, then Ordered, then the rest, and only then plain BeanFactoryPostProcessors. Anything instantiated in here is built before a single BeanPostProcessor exists."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.annotation.ConfigurationClassPostProcessor",
+      "method": "processConfigBeanDefinitions",
+      "notice": "The one that turns your @Configuration classes into bean definitions, follows @Import and @ComponentScan, and evaluates @Conditional. All of Boot's auto-configuration arrives through here."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.PostProcessorRegistrationDelegate",
+      "method": "registerBeanPostProcessors",
+      "notice": "Registration only - the BeanPostProcessors themselves are instantiated here, which is why they cannot post-process each other or anything created earlier."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.DefaultListableBeanFactory",
+      "method": "preInstantiateSingletons",
+      "notice": "Where your beans are finally built, one at a time, in definition order. The last line is the SmartInitializingSingleton callback: everything exists, nothing has started yet."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.AbstractApplicationContext",
+      "method": "finishRefresh",
+      "notice": "Lifecycle beans are started, and only then is ContextRefreshedEvent published. A listener on that event can assume every SmartLifecycle is already running."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.DefaultLifecycleProcessor",
+      "method": "onRefresh",
+      "notice": "Note the filter: only SmartLifecycle beans with isAutoStartup() are started. A plain Lifecycle bean sits there doing nothing until somebody calls context.start()."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.AbstractApplicationContext",
+      "method": "doClose",
+      "notice": "Shutdown, and the order is deliberate: ContextClosedEvent first, so listeners still have a working context, then lifecycle stop, then destroy callbacks."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.DefaultLifecycleProcessor",
+      "method": "stopBeans",
+      "notice": "Reverse phase order, and each phase waits up to timeoutPerShutdownPhase for its stop(Runnable) callbacks. A SmartLifecycle that overrides stop(Runnable) and never calls the callback adds thirty seconds to every shutdown."
+    }
+  ],
+  "note": "startup"
+}
