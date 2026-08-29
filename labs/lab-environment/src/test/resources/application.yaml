@@ -1,0 +1,5 @@
+# The base file. Read whatever the active profiles are, which is the point of
+# profileSpecificFilesAreAdditiveNotReplacements.
+demo:
+  value: from-application
+  only-in-base: base

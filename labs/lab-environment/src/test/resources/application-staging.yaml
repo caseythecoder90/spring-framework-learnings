@@ -1,0 +1,3 @@
+# Overrides one key and leaves the rest of the base file alone.
+demo:
+  value: from-application-staging
