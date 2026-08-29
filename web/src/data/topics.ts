@@ -55,7 +55,9 @@ export const TOPICS: Topic[] = [
     title: 'The proxy model',
     track: 'foundations',
     blurb: 'JDK versus CGLIB, why self-invocation skips your advice, and how proxy ordering is decided.',
-    status: 'next',
+    status: 'shipped',
+    lab: 'lab-proxies',
+    tests: 18,
   },
   {
     slug: 'bean-lifecycle',

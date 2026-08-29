@@ -1,0 +1,50 @@
+{
+  "title": "How your bean becomes a proxy",
+  "summary": "A BeanPostProcessor swaps your object for a subclass or an interface implementation on the way out of the container. Four classes decide everything about how the feature behaves afterwards.",
+  "entry": "Put a breakpoint in AbstractAutoProxyCreator.wrapIfNecessary and start an app with any @Transactional bean. It fires once per bean at startup.",
+  "steps": [
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator",
+      "method": "postProcessAfterInitialization",
+      "notice": "The whole of Spring AOP hangs off one BeanPostProcessor callback. It returns a different object than it was given, and the container stores that instead. Nothing else in Spring needs to know."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator",
+      "method": "wrapIfNecessary",
+      "notice": "Decides whether this bean needs proxying at all, by asking which advisors match it. A bean with no matching advisor is returned untouched, which is why most beans are not proxies."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.DefaultAopProxyFactory",
+      "method": "createAopProxy",
+      "notice": "JDK or CGLIB, in about ten lines. proxyTargetClass, whether the user supplied interfaces, and whether the target is itself an interface. Boot forces the CGLIB branch by default."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.CglibAopProxy",
+      "method": "getProxy",
+      "notice": "Builds the subclass. Note it goes through Objenesis, so no constructor runs and the proxy's own fields stay unset. That is the reason reading a field off an injected bean can give null while the getter works."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor",
+      "method": "intercept",
+      "notice": "Every advised call enters here, and only calls that arrive through the proxy reference do. A call from one method of the target to another never reaches this frame, which is self-invocation in one sentence."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.ReflectiveMethodInvocation",
+      "method": "proceed",
+      "notice": "Walks the advisor chain, re-entering itself once per advice. Set a breakpoint here on a bean that is transactional and cached and you can watch the ordering that @Order on the advisors decided."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.AopContext",
+      "method": "currentProxy",
+      "notice": "The escape hatch. With exposeProxy = true the proxy is put in a ThreadLocal so the target can call back through itself. It throws rather than returning null when exposeProxy is off, which is the right kind of failure."
+    }
+  ],
+  "note": "proxies"
+}
