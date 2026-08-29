@@ -1,0 +1,50 @@
+{
+  "title": "How Spring finds an annotation you never wrote",
+  "summary": "From a class reference to a merged, alias-resolved annotation instance. The whole thing is a graph walk plus an attribute mapping table, cached hard because it runs constantly at startup.",
+  "entry": "Put a breakpoint in AnnotationTypeMapping.getMirrorSets and start any Spring app. It fires while the container is reading your stereotypes.",
+  "steps": [
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.MergedAnnotations",
+      "method": "from",
+      "notice": "The entry point everything else in Spring funnels through. Note the SearchStrategy parameter: DIRECT, INHERITED_ANNOTATIONS, SUPERCLASS, TYPE_HIERARCHY. Picking the wrong one is the usual reason an annotation is silently ignored."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.AnnotationsScanner",
+      "method": "scan",
+      "notice": "Walks the element according to the strategy: the element itself, then superclasses, then interfaces. This is the part that decides WHERE to look, before anything is merged."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.AnnotationTypeMappings",
+      "method": "forAnnotationType",
+      "notice": "Builds the meta-annotation graph for one annotation type: @ServiceEndpoint to @Service to @Component, breadth first. Heavily cached, because this is pure computation over types that never change."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.AnnotationTypeMapping",
+      "method": "getMirrorSets",
+      "notice": "Where @AliasFor actually lives. A mirror set is a group of attributes that must agree; resolving one picks the single declared value or throws if two disagree. Read this and both jobs of @AliasFor make sense at once."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.TypeMappedAnnotation",
+      "method": "getValue",
+      "notice": "Reads an attribute through the mapping, so a value declared on the outer annotation surfaces on the meta-annotation. This is why @GetMapping(\"/x\") sets @RequestMapping's path."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.SynthesizedMergedAnnotationInvocationHandler",
+      "method": "createProxy",
+      "notice": "synthesize() hands back a JDK proxy implementing the annotation interface, not the annotation the compiler produced. That is how merged values reach code that just calls annotation.value()."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.annotation.AnnotationUtils",
+      "method": "getAnnotation",
+      "notice": "The legacy API, still everywhere. Compare its synthesize(AnnotationUtils::isSingleLevelPresent) with findAnnotation's synthesize(MergedAnnotation::isPresent): getAnnotation stops one meta-level out, findAnnotation does not. Same-looking calls, different reach."
+    }
+  ],
+  "note": "annotations"
+}

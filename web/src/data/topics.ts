@@ -46,7 +46,9 @@ export const TOPICS: Topic[] = [
     title: 'The annotation model',
     track: 'foundations',
     blurb: 'MergedAnnotations, meta-annotations and @AliasFor: how Spring finds an annotation you never wrote directly.',
-    status: 'next',
+    status: 'shipped',
+    lab: 'lab-annotations',
+    tests: 18,
   },
   {
     slug: 'proxies',

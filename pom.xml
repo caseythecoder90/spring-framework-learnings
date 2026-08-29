@@ -23,6 +23,7 @@
     <module>labs/lab-support</module>
     <module>labs/lab-scheduling</module>
     <module>labs/lab-events</module>
+    <module>labs/lab-annotations</module>
     <module>labs/lab-codepaths</module>
   </modules>
 
