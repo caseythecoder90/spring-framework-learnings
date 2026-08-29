@@ -103,7 +103,7 @@ export const TOPICS: Topic[] = [
     title: 'JdbcTemplate and DataSource',
     track: 'data',
     blurb: 'Connection handling, pooling, and how a vendor SQLException becomes a DataAccessException.',
-    status: 'queued',
+    status: 'next',
   },
   {
     slug: 'transactions',
@@ -167,8 +167,10 @@ export const TOPICS: Topic[] = [
     slug: 'caching',
     title: 'Caching',
     track: 'execution',
-    blurb: 'Key generation, cache resolution, and self-invocation biting a second time.',
-    status: 'next',
+    blurb: 'Why two @Cacheable methods can share entries, condition versus unless, and the two ways caching silently does nothing.',
+    status: 'shipped',
+    lab: 'lab-caching',
+    tests: 13,
   },
 ];
 

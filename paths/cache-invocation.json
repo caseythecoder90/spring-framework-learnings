@@ -1,0 +1,44 @@
+{
+  "title": "How @Cacheable decides whether to call your method",
+  "summary": "Parse the annotations into operations, build a key from the arguments, look it up, and only invoke on a miss. The key generator is the part worth reading closely.",
+  "entry": "Put a breakpoint in SimpleKeyGenerator.generateKey and call any @Cacheable method. Look at what it is given: the arguments, and nothing identifying the method.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.annotation.ProxyCachingConfiguration",
+      "method": "cacheInterceptor",
+      "notice": "What @EnableCaching imports. An advisor, an operation source and an interceptor - the same three pieces as transactions, which is not a coincidence."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.annotation.AnnotationCacheOperationSource",
+      "method": "findCacheOperations",
+      "notice": "Turns @Cacheable, @CachePut and @CacheEvict on a method into CacheOperation objects, once, and caches them. Note publicMethodsOnly defaults to true: a non-public @Cacheable method is not an error, it is simply never cached."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.interceptor.CacheInterceptor",
+      "method": "invoke",
+      "notice": "Four lines that delegate to the superclass. As usual, the class named after the feature is not where the work is."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.interceptor.CacheAspectSupport",
+      "method": "execute",
+      "notice": "The real logic: evict-before, look up, invoke on a miss, put, evict-after. condition is evaluated here before the lookup; unless is evaluated after the method has already run."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.interceptor.SimpleKeyGenerator",
+      "method": "generateKey",
+      "notice": "Nine lines, and the source of the worst caching bug you will meet. No arguments gives SimpleKey.EMPTY, one argument IS the key, several give a SimpleKey of them. The method is never part of the key, so two @Cacheable methods sharing a cache name and an argument type share entries."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.cache.interceptor.CacheAspectSupport",
+      "method": "findCachedValue",
+      "notice": "The lookup. A cached null is a real hit, not a miss, because ConcurrentMapCacheManager allows null values by default."
+    }
+  ],
+  "note": "caching"
+}
