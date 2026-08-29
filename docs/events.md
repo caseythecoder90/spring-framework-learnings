@@ -181,6 +181,8 @@ publishEvent
 
 Phases: `BEFORE_COMMIT`, `AFTER_COMMIT` (the default), `AFTER_ROLLBACK`, `AFTER_COMPLETION`.
 
+<!-- widget:transaction-phases -->
+
 Observed ordering inside a `@Transactional` service method:
 
 ```

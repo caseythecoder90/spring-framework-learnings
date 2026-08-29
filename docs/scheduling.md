@@ -67,16 +67,20 @@ first trigger.
 Since Framework 6.1 the lookup goes through `TaskSchedulerRouter`, resolved **per task**:
 
 1. `@Scheduled(scheduler = "someBean")` → that bean, by qualifier.
-2. Otherwise, the unique `TaskScheduler` bean by type.
-3. If several exist, the one **named `taskScheduler`**.
-4. Otherwise, a unique `ScheduledExecutorService` bean, wrapped in `ConcurrentTaskScheduler`.
-5. If several exist, again the one named `taskScheduler`.
+2. Otherwise the unique `TaskScheduler` bean by type. A `@Primary` bean counts as unique.
+3. If several exist, the one **named `taskScheduler`**. If none is, the search **stops here** and
+   falls to step 6 — the `ScheduledExecutorService` branch below is never reached.
+4. If there was no `TaskScheduler` bean at all, a unique `ScheduledExecutorService`, wrapped in a
+   `ConcurrentTaskScheduler`.
+5. If several of those exist, again the one named `taskScheduler`.
 6. **Otherwise `Executors.newSingleThreadScheduledExecutor()`** — a private, single-threaded pool,
    announced only by an INFO line: *No TaskScheduler/ScheduledExecutorService bean found for
    scheduled processing*.
 
-Step 6 is worth knowing by heart. A context with two `TaskScheduler` beans and neither named
-`taskScheduler` silently lands there.
+Steps 3 and 6 are the ones worth knowing by heart. A context with two `TaskScheduler` beans and
+neither named `taskScheduler` lands on a private single thread, and the only warning is an INFO log.
+
+<!-- widget:scheduler-routing -->
 
 Step 1 is also the cheapest fix for pool starvation: leave the shared pool alone and give the slow
 job its own.

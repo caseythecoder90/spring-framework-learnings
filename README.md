@@ -11,6 +11,8 @@ Studying **Spring Framework 7.0.9 / Spring Boot 4.1.1** on Java 21.
 
 ---
 
+Read it online: **https://caseythecoder90.github.io/spring-framework-learnings/**
+
 ## Layout
 
 ```
@@ -22,8 +24,10 @@ labs/
   lab-support/          Recorder: what ran, on which thread, when
   lab-scheduling/       14 tests + a runnable demo app
   lab-events/           15 tests + a runnable demo app
+site/                 the static site: renders docs/*.md plus interactive explainers
 tools/
   fetch-spring-sources.sh   unpack Spring source jars locally to read along
+  build-site.sh             stage the site into target/site
 ```
 
 ---
@@ -51,6 +55,14 @@ same millisecond as `fixedRate` tries to catch up. Ctrl-C to stop it.
 
 That one prints the thread name at every hop, and prints `placeOrder END` *after* every listener has
 finished — because publishing an event is a method call.
+
+The site renders the same markdown notes, with two interactive explainers embedded in them: the
+`TaskSchedulerRouter` lookup, and which `@TransactionalEventListener` phases fire on commit, on
+rollback, and with no transaction at all.
+
+```bash
+./tools/build-site.sh --serve
+```
 
 To read the implementation alongside the notes:
 
