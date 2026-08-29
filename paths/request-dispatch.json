@@ -1,0 +1,56 @@
+{
+  "title": "What happens between the socket and your controller method",
+  "summary": "DispatcherServlet.doDispatch is the front controller pattern written out in about eighty readable lines. Read it once and every question about interceptors, argument resolution, message converters and error handling has an obvious place to look.",
+  "entry": "Put a breakpoint on the first line of DispatcherServlet.doDispatch and send one request. Then look at the frames above it: everything before doDispatch is servlet filters, and everything after is Spring MVC.",
+  "steps": [
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.DispatcherServlet",
+      "method": "doDispatch",
+      "notice": "The whole request, top to bottom: find a handler, find an adapter, run preHandle, invoke, run postHandle, render, run afterCompletion. Note the try/catch shape - an exception is captured and dealt with in processDispatchResult, which is why afterCompletion still runs."
+    },
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.handler.AbstractHandlerMethodMapping",
+      "method": "lookupHandlerMethod",
+      "notice": "URL to method. It collects every mapping that matches and then sorts them by specificity, which is where an ambiguous mapping exception comes from - and why /orders/{id} loses to /orders/new."
+    },
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter",
+      "method": "invokeHandlerMethod",
+      "notice": "Where @InitBinder and @ModelAttribute methods are collected, the argument resolvers and return value handlers are attached, and async support is set up. Everything that makes an annotated controller work is assembled here, per request."
+    },
+    {
+      "module": "spring-web",
+      "class": "org.springframework.web.method.support.InvocableHandlerMethod",
+      "method": "getMethodArgumentValues",
+      "notice": "One loop over the method parameters, asking each resolver whether it supports this one. This loop is the entire answer to 'how does @RequestParam work', and to 'why did my unannotated parameter get treated as a model attribute'."
+    },
+    {
+      "module": "spring-web",
+      "class": "org.springframework.web.method.support.HandlerMethodArgumentResolverComposite",
+      "method": "getArgumentResolver",
+      "notice": "First match wins, and the result is cached per parameter. The order the resolvers were registered in decides the answer, which is why a custom resolver added at the end never sees a parameter a built-in one already claims."
+    },
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.mvc.method.annotation.AbstractMessageConverterMethodProcessor",
+      "method": "writeWithMessageConverters",
+      "notice": "Content negotiation and serialisation in one method: work out the producible types, intersect with Accept, pick a converter, write. A 406 is decided here."
+    },
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.DispatcherServlet",
+      "method": "processHandlerException",
+      "notice": "Each HandlerExceptionResolver in turn until one returns a ModelAndView. If none does, the exception is rethrown and leaves the servlet - which is exactly what a filter then sees, wrapped in a ServletException."
+    },
+    {
+      "module": "spring-webmvc",
+      "class": "org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver",
+      "method": "getExceptionHandlerMethod",
+      "notice": "The controller's own @ExceptionHandler methods are searched first, then the @ControllerAdvice beans in order. This is the two-line explanation for why a local handler overrides a global one."
+    }
+  ],
+  "note": "web-mvc"
+}
