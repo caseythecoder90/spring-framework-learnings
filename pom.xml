@@ -29,6 +29,13 @@
     <module>labs/lab-async</module>
     <module>labs/lab-retry</module>
     <module>labs/lab-caching</module>
+    <module>labs/lab-transactions</module>
+    <module>labs/lab-startup</module>
+    <module>labs/lab-binding</module>
+    <module>labs/lab-environment</module>
+    <module>labs/lab-conditions</module>
+    <module>labs/lab-web</module>
+    <module>labs/lab-testing</module>
     <module>labs/lab-codepaths</module>
   </modules>
 
