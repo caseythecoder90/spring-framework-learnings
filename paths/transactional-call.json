@@ -58,5 +58,5 @@
       "notice": "The rollback rules. By default only RuntimeException and Error roll back, so a checked exception commits. Set a breakpoint here once and you will never be surprised by that again."
     }
   ],
-  "note": "reading-the-source"
+  "note": "transactions"
 }
