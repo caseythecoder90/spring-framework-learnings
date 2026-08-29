@@ -10,6 +10,7 @@ import type { CodePathData } from '../components/widgets/CodePath';
 const REGISTRY: Record<string, () => Promise<{ default: ComponentType }>> = {
   'scheduler-routing': () => import('../components/widgets/SchedulerRouting'),
   'transaction-phases': () => import('../components/widgets/TransactionPhases'),
+  'lifecycle-timeline': () => import('../components/widgets/LifecycleTimeline'),
 };
 
 function inlinePaths(): Record<string, CodePathData> {

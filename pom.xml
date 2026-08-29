@@ -25,6 +25,7 @@
     <module>labs/lab-events</module>
     <module>labs/lab-annotations</module>
     <module>labs/lab-proxies</module>
+    <module>labs/lab-lifecycle</module>
     <module>labs/lab-codepaths</module>
   </modules>
 

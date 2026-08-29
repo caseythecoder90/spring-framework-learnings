@@ -1,0 +1,56 @@
+{
+  "title": "From bean definition to a bean you can use",
+  "summary": "One method, doCreateBean, calls three others in order: instantiate, populate, initialise. Every lifecycle callback you have ever used hangs off one of those three.",
+  "entry": "Put a breakpoint in AbstractAutowireCapableBeanFactory.doCreateBean, conditional on beanName.equals(\"yourBean\"), and start the app. Everything below happens inside this one frame.",
+  "steps": [
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.DefaultSingletonBeanRegistry",
+      "method": "getSingleton",
+      "notice": "The singleton cache and the creation guard. Read this first: the three-map structure here (finished, early, factories) is the whole mechanism behind circular references."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory",
+      "method": "doCreateBean",
+      "notice": "The spine. createBeanInstance, then populateBean, then initializeBean. Everything else is a callback fired from one of those three, and reading them in order is the fastest way to understand the container."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory",
+      "method": "createBeanInstance",
+      "notice": "Constructor resolution. Note that a single constructor needs no @Autowired, and that constructor arguments must be resolvable here, which is why a constructor cycle cannot work."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.DefaultSingletonBeanRegistry",
+      "method": "addSingletonFactory",
+      "notice": "Called between instantiation and population: the half-built object is published so something else can reference it. This single line is why field injection tolerates a cycle and constructor injection does not."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory",
+      "method": "populateBean",
+      "notice": "Injection. It is not special-cased in the container; it is just InstantiationAwareBeanPostProcessor.postProcessProperties, and AutowiredAnnotationBeanPostProcessor is one such processor."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor",
+      "method": "postProcessProperties",
+      "notice": "Where @Autowired fields and methods are actually set, using metadata collected earlier in postProcessMergedBeanDefinition. Being a PriorityOrdered processor, it runs before most other property callbacks."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory",
+      "method": "initializeBean",
+      "notice": "Four steps in twenty lines: Aware callbacks, BeanPostProcessor before-init (this is where @PostConstruct runs), afterPropertiesSet and the custom init-method, then BeanPostProcessor after-init. That last step is where the auto-proxy creator swaps your object."
+    },
+    {
+      "module": "spring-beans",
+      "class": "org.springframework.beans.factory.support.DisposableBeanAdapter",
+      "method": "destroy",
+      "notice": "Shutdown in reverse: @PreDestroy, DisposableBean.destroy, then the custom destroy-method. Prototypes never get here, because the container stopped tracking them at handover."
+    }
+  ],
+  "note": "bean-lifecycle"
+}

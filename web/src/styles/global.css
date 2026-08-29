@@ -284,3 +284,14 @@ li { margin: 0.3rem 0; }
 
 footer.foot { border-top: 1px solid var(--border); margin-top: 4rem; padding: 1.5rem; text-align: center; font-size: 13px; color: var(--text-faint); }
 .foot a { color: var(--text-dim); }
+
+.lc-phase {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: none;
+  margin: 0.9rem 0 0.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.cp-list > li:first-child .lc-phase { margin-top: 0; }

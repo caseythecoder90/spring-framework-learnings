@@ -64,14 +64,16 @@ export const TOPICS: Topic[] = [
     title: 'Bean lifecycle and DI',
     track: 'foundations',
     blurb: 'Constructor versus field injection, BeanPostProcessor ordering, and circular references.',
-    status: 'next',
+    status: 'shipped',
+    lab: 'lab-lifecycle',
+    tests: 14,
   },
   {
     slug: 'startup',
     title: 'Container startup phases',
     track: 'foundations',
     blurb: 'What refresh() does in order, and where SmartLifecycle fits.',
-    status: 'queued',
+    status: 'next',
   },
 
   {
