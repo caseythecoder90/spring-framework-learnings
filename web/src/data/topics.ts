@@ -73,7 +73,7 @@ export const TOPICS: Topic[] = [
     title: 'Container startup phases',
     track: 'foundations',
     blurb: 'What refresh() does in order, and where SmartLifecycle fits.',
-    status: 'next',
+    status: 'queued',
   },
 
   {
@@ -150,14 +150,16 @@ export const TOPICS: Topic[] = [
     title: '@Async and executors',
     track: 'execution',
     blurb: 'Pool configuration, CompletableFuture, and propagating context across the hand-off.',
-    status: 'queued',
+    status: 'shipped',
+    lab: 'lab-async',
+    tests: 14,
   },
   {
     slug: 'retry',
     title: 'Spring Retry',
     track: 'execution',
     blurb: 'Backoff policies, recovery methods, and what happens when retry meets a transaction.',
-    status: 'queued',
+    status: 'next',
   },
   {
     slug: 'caching',

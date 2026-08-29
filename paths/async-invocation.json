@@ -1,0 +1,56 @@
+{
+  "title": "What @Async does to a method call",
+  "summary": "The call is intercepted, wrapped in a task, handed to an executor, and returned from immediately. Where the exception goes depends entirely on the return type.",
+  "entry": "Put a breakpoint in AsyncExecutionAspectSupport.determineAsyncExecutor and call any @Async method. It resolves once per method and then caches, so it fires on the first call only.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.AsyncAnnotationBeanPostProcessor",
+      "method": "setBeanFactory",
+      "notice": "@EnableAsync contributes this one BeanPostProcessor, which adds an advisor to every bean carrying @Async. The same shape as scheduling and transactions."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.AsyncAnnotationAdvisor",
+      "method": "buildAdvice",
+      "notice": "Builds the interceptor and captures the AsyncUncaughtExceptionHandler here, long before any exception exists. If you never supplied one, the default that only logs is baked in at this point."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.AsyncExecutionInterceptor",
+      "method": "invoke",
+      "notice": "Every async call passes through here, and only calls arriving via the proxy do. An internal call runs inline and synchronously, with no warning."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.AsyncExecutionAspectSupport",
+      "method": "determineAsyncExecutor",
+      "notice": "Qualifier first, then the default supplier. Cached per method in a map, so the resolution you see on the first call is the one you keep."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.AsyncExecutionInterceptor",
+      "method": "getDefaultExecutor",
+      "notice": "Two lines, and the trap: if nothing is found it returns new SimpleAsyncTaskExecutor(), which starts a fresh platform thread per call with no upper bound. Boot hides this by contributing applicationTaskExecutor."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.AsyncExecutionAspectSupport",
+      "method": "doSubmit",
+      "notice": "The return-type switch. CompletableFuture and Future carry the outcome back to the caller; void submits and forgets, which is where the exception goes missing."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.AsyncExecutionAspectSupport",
+      "method": "handleError",
+      "notice": "Only reached for a void method. It calls the AsyncUncaughtExceptionHandler, whose default implementation logs and nothing else."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.interceptor.SimpleAsyncUncaughtExceptionHandler",
+      "method": "handleUncaughtException",
+      "notice": "The default. One log line. Read it once and you will always supply your own."
+    }
+  ],
+  "note": "async"
+}
