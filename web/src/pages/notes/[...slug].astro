@@ -1,0 +1,68 @@
+---
+import { getCollection, getEntry, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { topicBySlug, GUIDES } from '../../data/topics';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes');
+  return notes.map((note) => ({ params: { slug: note.id } }));
+}
+
+const { slug } = Astro.params;
+const note = await getEntry('notes', slug!);
+if (!note) throw new Error(`Unknown note: ${slug}`);
+
+const { Content, headings } = await render(note);
+
+const topic = topicBySlug(slug!);
+const guide = GUIDES.find((g) => g.slug === slug);
+const title = topic?.title ?? guide?.title ?? slug!;
+
+// Only the paths this note declares are inlined, so a page carries just the data it renders.
+const allPaths = await getCollection('paths');
+const notePaths = allPaths.filter((p) => p.data.note === slug);
+const pathData = Object.fromEntries(notePaths.map((p) => [p.id, p.data]));
+
+const sections = headings.filter((h) => h.depth === 2);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base title={`${title} | spring-framework-learnings`} current={guide ? slug : undefined}>
+  <main class="shell with-toc">
+    <article>
+      <Content />
+    </article>
+    <aside class="toc">
+      {sections.map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+    </aside>
+  </main>
+
+  <script id="__paths" type="application/json" set:html={JSON.stringify(pathData)} is:inline />
+  <script>
+    import '../../scripts/mount-widgets';
+  </script>
+  <script is:inline define:vars={{ repoBase: 'https://github.com/caseythecoder90/spring-framework-learnings/blob/main/', siteBase: base }}>
+    // The notes link to repo files with paths like ../labs/lab-events. On GitHub those resolve;
+    // here they have to be rewritten to the repository.
+    document.querySelectorAll('article a[href]').forEach((a) => {
+      const href = a.getAttribute('href');
+      if (!href || /^(https?:|#|mailto:)/.test(href)) return;
+      a.setAttribute('href', repoBase + href.replace(/^(\.\.\/)+/, ''));
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener');
+    });
+
+    // Highlight the current section in the sidebar.
+    const links = Array.from(document.querySelectorAll('aside.toc a'));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          links.forEach((l) => l.classList.toggle('active', l.getAttribute('href') === `#${entry.target.id}`));
+        });
+      },
+      { rootMargin: '-80px 0px -70% 0px' }
+    );
+    document.querySelectorAll('article h2[id]').forEach((h) => observer.observe(h));
+  </script>
+</Base>

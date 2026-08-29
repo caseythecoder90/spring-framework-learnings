@@ -1,0 +1,62 @@
+{
+  "title": "What happens when you call a @Transactional method",
+  "summary": "From your call site to the database transaction, and back. Read invokeWithinTransaction and getTransaction and you have read most of Spring's transaction support.",
+  "entry": "Put a breakpoint on the first line of your own @Transactional method, run a test that calls it, and read the frames below yours. That stack is this list.",
+  "steps": [
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor",
+      "method": "intercept",
+      "notice": "You are inside the proxy, not your object. Nothing here is reached when one method of your bean calls another directly, which is the whole explanation of why self-invocation loses the transaction."
+    },
+    {
+      "module": "spring-aop",
+      "class": "org.springframework.aop.framework.ReflectiveMethodInvocation",
+      "method": "proceed",
+      "notice": "The generic interceptor chain. It walks a list and calls proceed() again each time, so the same frame appears once per advice. Transactions, caching, retry and security all queue up here."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.interceptor.TransactionInterceptor",
+      "method": "invoke",
+      "notice": "Almost nothing happens here. It delegates straight to the superclass, which is a good early lesson in Spring: the class named after the feature is often just the adapter."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.interceptor.TransactionAspectSupport",
+      "method": "invokeWithinTransaction",
+      "notice": "The whole feature, in one method. Begin, invoke, commit on success, roll back on the exceptions the rules say are rollback-worthy. Worth reading top to bottom before anything else."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.interceptor.TransactionAspectSupport",
+      "method": "createTransactionIfNecessary",
+      "notice": "Where the TransactionAttribute (your @Transactional settings, already parsed) meets the transaction manager."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.support.AbstractPlatformTransactionManager",
+      "method": "getTransaction",
+      "notice": "The decision point for propagation. Read this and then handleExistingTransaction and you know all seven modes; everything else about propagation is commentary."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.support.AbstractPlatformTransactionManager",
+      "method": "handleExistingTransaction",
+      "notice": "Only runs when a transaction is already in progress. REQUIRES_NEW suspends, NESTED makes a savepoint, MANDATORY is happy, NEVER throws. One switch statement is the entire propagation matrix."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.support.TransactionSynchronizationManager",
+      "method": "bindResource",
+      "notice": "The thread-local that makes it all work. The Connection is bound here, which is why the transaction does not follow you onto an @Async thread and why @TransactionalEventListener hangs its callbacks off this."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.interceptor.TransactionAspectSupport",
+      "method": "completeTransactionAfterThrowing",
+      "notice": "The rollback rules. By default only RuntimeException and Error roll back, so a checked exception commits. Set a breakpoint here once and you will never be surprised by that again."
+    }
+  ],
+  "note": "reading-the-source"
+}

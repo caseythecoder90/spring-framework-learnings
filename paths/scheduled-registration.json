@@ -1,0 +1,50 @@
+{
+  "title": "How a @Scheduled method becomes a running task",
+  "summary": "Registration happens in two phases: annotations are turned into Task objects as each bean is created, and nothing is actually scheduled until the context finishes refreshing.",
+  "entry": "Put a breakpoint in ScheduledAnnotationBeanPostProcessor.processScheduled and start any app with @EnableScheduling. It fires once per annotated method, at startup.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.SchedulingConfiguration",
+      "method": "scheduledAnnotationProcessor",
+      "notice": "The entire content of @EnableScheduling. One @Import, one bean definition. This is the most common shape in Spring: the annotation imports a configuration that registers a post-processor."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor",
+      "method": "postProcessAfterInitialization",
+      "notice": "Runs once per bean. Note getOrder() returns LOWEST_PRECEDENCE, so by the time this sees your bean the auto-proxy creator has already wrapped it. That is why @Scheduled and @Transactional work together."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor",
+      "method": "processScheduled",
+      "notice": "One annotation becomes one Task: CronTask, FixedDelayTask or FixedRateTask. Nothing is scheduled yet; the tasks are only collected."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor",
+      "method": "finishRegistration",
+      "notice": "Triggered by ContextRefreshedEvent. This is the phase boundary: the container is fully up before any job can fire, which is why a scheduled method never races a half-built application."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.config.TaskSchedulerRouter",
+      "method": "determineDefaultScheduler",
+      "notice": "The six-step lookup, in one readable method. Follow the catch blocks rather than the happy path; the interesting outcome is the last line, a private single-thread executor nobody asked for."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.config.ScheduledTaskRegistrar",
+      "method": "scheduleTasks",
+      "notice": "Where Task objects finally reach a TaskScheduler. Everything above this line is bookkeeping."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.scheduling.support.TaskUtils",
+      "method": "getDefaultErrorHandler",
+      "notice": "Two lines that explain why a failing job keeps running: repeating tasks get LOG_AND_SUPPRESS, one-shot tasks get LOG_AND_PROPAGATE. Suppression keeps the schedule alive at the cost of silence."
+    }
+  ],
+  "note": "scheduling"
+}

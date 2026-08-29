@@ -26,3 +26,21 @@ jobs:
         with:
           name: surefire-reports
           path: '**/target/surefire-reports/*.txt'
+
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+        working-directory: web
+
+      # Catches a broken note reference or an invalid code path before it reaches Pages.
+      - run: npm run build
+        working-directory: web

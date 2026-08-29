@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'site/**'
+      - 'web/**'
       - 'docs/**'
-      - 'tools/build-site.sh'
+      - 'paths/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -28,14 +28,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Stages site/ and the markdown notes together into target/site.
-      - run: ./tools/build-site.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+        working-directory: web
+
+      # Reads docs/*.md and paths/*.json from the repo root via content collections.
+      - run: npm run build
+        working-directory: web
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: target/site
+          path: web/dist
 
       - id: deploy
         uses: actions/deploy-pages@v4

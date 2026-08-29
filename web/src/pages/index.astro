@@ -1,0 +1,63 @@
+---
+import Base from '../layouts/Base.astro';
+import { TRACKS, topicsInTrack } from '../data/topics';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base title="spring-framework-learnings" current="tracks">
+  <main class="shell">
+    <article>
+      <h1>How Spring actually behaves</h1>
+      <p class="lede">
+        It is very easy to write a confident, plausible, wrong explanation of a Spring internal. So
+        every topic here gets two things: a note written after reading the real source, and a lab
+        module whose tests prove what the note claims. <code>mvn test</code> is the fact-checker.
+      </p>
+
+      <div class="tracks">
+        {
+          TRACKS.map((track) => (
+            <section class="track">
+              <h2>{track.title}</h2>
+              <p class="blurb">{track.blurb}</p>
+              {topicsInTrack(track.id).map((topic) => (
+                <div class={`topic ${topic.status}`}>
+                  <span class={`dot ${topic.status}`} />
+                  <span class="name">
+                    {topic.status === 'shipped' ? (
+                      <a href={`${base}/notes/${topic.slug}`}>{topic.title}</a>
+                    ) : (
+                      topic.title
+                    )}
+                  </span>
+                  {topic.tests && <span class="tests">{topic.tests} tests</span>}
+                </div>
+              ))}
+            </section>
+          ))
+        }
+      </div>
+
+      <h2 id="method">How these notes are written</h2>
+      <p>
+        The order matters, because writing the prose first produces notes that sound right and are
+        not. Read the implementation. Write a test that would fail if the claim were wrong in either
+        direction. Only then write the explanation, with a pointer to the test underneath it.
+      </p>
+      <p>
+        If you want to do the reading yourself, start with
+        <a href={`${base}/notes/reading-the-source`}>how to read Spring source</a>, then follow a
+        <a href={`${base}/paths`}>code path</a> — an ordered list of the classes a feature actually
+        goes through, with every class and method checked against the real Spring jars by a test.
+      </p>
+
+      <h2 id="version">Version under study</h2>
+      <p>
+        Spring Framework 7.0.9 and Spring Boot 4.1.1, on Java 21. Version-specific behaviour is
+        called out rather than smoothed over, because that is usually the part that bites on an
+        upgrade.
+      </p>
+    </article>
+  </main>
+</Base>

@@ -1,0 +1,44 @@
+{
+  "title": "What publishEvent actually does",
+  "summary": "Four steps: wrap the payload, maybe buffer it, loop over matching listeners on the current thread, then hand the event to the parent context.",
+  "entry": "Put a breakpoint in SimpleApplicationEventMulticaster.multicastEvent and publish anything. Look at the call stack: your business method is still on it, which is the entire point.",
+  "steps": [
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.support.AbstractApplicationContext",
+      "method": "publishEvent",
+      "notice": "Read all four branches. A non-ApplicationEvent payload gets wrapped, early events get buffered, then the multicaster runs, and finally the event is republished to the parent context. Events travel up, never down."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.event.SimpleApplicationEventMulticaster",
+      "method": "multicastEvent",
+      "notice": "A for loop with a null check. taskExecutor is null unless you set it, so listeners run inline; errorHandler is null too, so a listener exception comes straight back out of publishEvent."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.event.AbstractApplicationEventMulticaster",
+      "method": "getApplicationListeners",
+      "notice": "Type matching plus a cache keyed by event type and source type. This is where a generic event silently fails to match a listener, because erasure removed the type argument."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.event.EventListenerMethodProcessor",
+      "method": "afterSingletonsInstantiated",
+      "notice": "Not on the publish path, but the reason your listener exists at all. It runs once after every singleton is created and walks bean definitions, which is why a @Lazy bean still gets its listeners registered."
+    },
+    {
+      "module": "spring-context",
+      "class": "org.springframework.context.event.ApplicationListenerMethodAdapter",
+      "method": "processEvent",
+      "notice": "Condition evaluation, argument resolution, reflective call, and the return-value handling that republishes whatever your listener returned as a brand new event."
+    },
+    {
+      "module": "spring-tx",
+      "class": "org.springframework.transaction.event.TransactionalApplicationListenerMethodAdapter",
+      "method": "onApplicationEvent",
+      "notice": "Three branches and one of them is the bug you will hit: no active transaction, not a fallback listener, so it logs at DEBUG and returns without doing anything."
+    }
+  ],
+  "note": "events"
+}

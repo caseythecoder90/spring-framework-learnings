@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+const paths = (await getCollection('paths')).sort((a, b) => a.data.title.localeCompare(b.data.title));
+const pathData = Object.fromEntries(paths.map((p) => [p.id, p.data]));
+---
+
+<Base title="Code paths | spring-framework-learnings" current="paths">
+  <main class="shell">
+    <article>
+      <h1>Code paths</h1>
+      <p class="lede">
+        Guided source reading. Each path is the ordered list of classes a feature actually goes
+        through, with a reason to care about every stop. Every class and method below is checked
+        against the real Spring jars by a test, so these cannot rot silently.
+      </p>
+
+      {paths.map((p) => (
+        <section>
+          <h2 id={p.id}>{p.data.title}</h2>
+          <p>{p.data.summary}</p>
+          <div class="widget-slot" data-widget="path" data-arg={p.id}></div>
+        </section>
+      ))}
+    </article>
+  </main>
+
+  <script id="__paths" type="application/json" set:html={JSON.stringify(pathData)} is:inline />
+  <script>
+    import '../../scripts/mount-widgets';
+  </script>
+</Base>

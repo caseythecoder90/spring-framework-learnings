@@ -24,10 +24,13 @@ labs/
   lab-support/          Recorder: what ran, on which thread, when
   lab-scheduling/       14 tests + a runnable demo app
   lab-events/           15 tests + a runnable demo app
-site/                 the static site: renders docs/*.md plus interactive explainers
+  reading-the-source.md how to study Spring source yourself
+paths/                code paths: guided source-reading traces, checked by a test
+labs/
+  lab-codepaths/        resolves every class and method in paths/ against the Spring jars
+web/                  Astro + React + TypeScript site that renders docs/ and paths/
 tools/
   fetch-spring-sources.sh   unpack Spring source jars locally to read along
-  build-site.sh             stage the site into target/site
 ```
 
 ---
@@ -56,12 +59,11 @@ same millisecond as `fixedRate` tries to catch up. Ctrl-C to stop it.
 That one prints the thread name at every hop, and prints `placeOrder END` *after* every listener has
 finished — because publishing an event is a method call.
 
-The site renders the same markdown notes, with two interactive explainers embedded in them: the
-`TaskSchedulerRouter` lookup, and which `@TransactionalEventListener` phases fire on commit, on
-rollback, and with no transaction at all.
+The site renders the same markdown notes with interactive explainers embedded in them, plus the
+code paths:
 
 ```bash
-./tools/build-site.sh --serve
+cd web && npm install && npm run dev
 ```
 
 To read the implementation alongside the notes:
@@ -88,6 +90,18 @@ that silently does nothing when there is no transaction.
 Each note ends with a review checklist and a map of the classes to read.
 
 ---
+
+## Code paths
+
+A code path is a guided source-reading trace: the ordered list of classes a feature actually goes
+through, with a reason to stop at each one. They live in [`paths/`](paths) as JSON.
+
+The point is that they are **checked**. `CodePathsAreRealTest` resolves every class and method
+against the Spring jars on the classpath, so a study guide pointing at a method that Spring renamed
+fails the build instead of quietly misleading you.
+
+Start with [how to read Spring source](docs/reading-the-source.md) for the method, then follow a
+path.
 
 ## Ground rules
 
