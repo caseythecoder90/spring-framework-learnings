@@ -10,15 +10,62 @@ right, as the note on [reading the source](reading-the-source.md) argues.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| Dependencies are available in the constructor | Only the **constructor-injected** ones |
-| `@PostConstruct` runs on the finished bean | It runs **before** the proxy is created |
-| Constructor injection is just a style preference | It is the only style that **cannot** form a cycle |
-| A prototype is destroyed with the context | It is **never** destroyed. Spring forgets it at handover |
-| A prototype injected into a singleton stays fresh | It is resolved **once**, then reused forever |
+1. **Read "Before this note".** Mostly a reminder of when Java assigns what during construction,
+   which is the thing that makes field injection's timing make sense.
+2. **Run `LifecycleOrderTest` and read its output.**
+   ```bash
+   ./mvnw -pl labs/lab-lifecycle -am test -Dtest=LifecycleOrderTest
+   ```
+   It records every callback a bean can receive, in order. The order below was written from that
+   output rather than from memory, so read the test first and the prose confirms it.
+3. **Read "The order"**, comparing it against what the test recorded.
+4. **Run and read `InjectionAndCyclesTest`**, then read "Injection styles" and
+   "Circular references". This pair is the practical argument for constructor injection.
+5. **Run and read `ScopeAndLazyTest`**, then "Scopes". The prototype behaviour is the part people
+   get wrong in production.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- In what order do my constructor, `@Autowired` fields, `@PostConstruct` and `afterPropertiesSet`
+  actually run?
+- Why is a field-injected dependency `null` when I use it in the constructor?
+- Why does constructor injection reject a circular reference when field injection tolerates one?
+- Why is my prototype bean's `@PreDestroy` never called?
+
+---
+
+## Before this note
+
+**Read [the proxy model](proxies.md) first.** The proxy is created in the *last* step of the
+lifecycle, and several things below only make sense once you know that.
+
+**The Java you need:**
+
+*Construction order.* Java assigns in a fixed sequence: field initialisers and instance blocks run
+top to bottom, then the constructor body. By the time the constructor returns, every field with an
+initialiser has a value — and every field without one is still `null` or `0`. Spring cannot inject
+a field before the object exists, so a field-injected dependency is necessarily `null` inside the
+constructor. That is not a Spring limitation; it is the language.
+
+*Reflection can write private fields.* `Field.setAccessible(true)` lets Spring assign a private
+field from outside the class. This is how field injection works at all, and it is why a
+field-injected class cannot use `final` — `final` fields are fixed once the constructor completes.
+Constructor injection can use `final`, which is most of the argument for it.
+
+*Java has no destructors.* `finalize` is gone, and garbage collection is not deterministic, so
+there is no language-level "this object is finished" hook. Anything that must release a resource
+needs an explicit call — which is exactly what `@PreDestroy`, `DisposableBean` and a destroy-method
+are. It also explains why a bean the container stops tracking never gets cleaned up: nothing else
+is going to do it.
+
+*An interface can be a callback.* `InitializingBean`, `DisposableBean` and the various `*Aware`
+types are ordinary interfaces the container checks for with `instanceof`. There is no magic; the
+container is just asking "do you implement this?" before calling you.
 
 ---
 
@@ -142,6 +189,23 @@ its `@Configuration` class to be instantiated very early, before it can be post-
 and Spring logs a warning about it.
 
 → `ScopeAndLazyTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| Dependencies are available in the constructor | Only the **constructor-injected** ones |
+| `@PostConstruct` runs on the finished bean | It runs **before** the proxy is created |
+| Constructor injection is just a style preference | It is the only style that **cannot** form a cycle |
+| A prototype is destroyed with the context | It is **never** destroyed. Spring forgets it at handover |
+| A prototype injected into a singleton stays fresh | It is resolved **once**, then reused forever |
+
+---
 
 ---
 

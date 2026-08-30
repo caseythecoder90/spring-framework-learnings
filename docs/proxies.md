@@ -10,15 +10,65 @@ changes" feature in Spring is an interceptor on a proxy, so the failure modes he
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| The bean I injected is my class | It is usually a **subclass** of it, or an interface implementation |
-| Calling my own method still applies the annotation | **No.** Self-invocation skips the proxy entirely |
-| A proxy is my object with extra behaviour | It is a **different object** that delegates to yours |
-| Fields on the injected bean are set | On a CGLIB proxy they are **null** — no constructor ran |
-| `final` just means "do not override" | It also means **not advised**, silently |
+1. **Read "Before this note".** The Java half is what a proxy actually *is*, and it is the piece
+   that makes everything else here obvious rather than magical. Five minutes.
+2. **Run `ProxyTypeSelectionTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-proxies test -Dtest=ProxyTypeSelectionTest
+   ```
+   Five tests showing which kind of proxy you get and how the two differ.
+3. **Read "Which proxy you get" and "Who creates the proxy".**
+4. **Run and read `SelfInvocationTest`, then `CglibLimitationsTest`.** These are the two that
+   explain real bugs. Do not skip them; they are the reason this note exists.
+5. **Read the matching sections**, then `AutoProxyCreatorTest` for the container-level view.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Why is the bean I injected not an instance of the class I wrote?
+- Why does `@Transactional` do nothing when I call the method from another method of the same class?
+- Why is a field on an injected bean `null` when the getter returns the right value?
+- When do I get a JDK proxy and when a CGLIB one, and what breaks in each case?
+
+---
+
+## Before this note
+
+**Read [the annotation model](annotations.md) first.** Spring has to *find* `@Transactional` before
+it can proxy anything, and that is the previous note.
+
+**The Java you need**, none of it Spring-specific:
+
+*A proxy is a different object that forwards to yours.* Java gives you two ways to make one.
+
+**JDK dynamic proxies** are built into the JDK. `Proxy.newProxyInstance` generates a class at
+runtime implementing a list of **interfaces**, routing every call to an `InvocationHandler`:
+
+```java
+Foo proxy = (Foo) Proxy.newProxyInstance(loader, new Class[]{ Foo.class }, handler);
+```
+
+The catch is in that signature: interfaces only. The result implements `Foo` but is **not** an
+instance of `FooImpl`, so casting to the implementation class throws `ClassCastException`.
+
+**Subclass proxies** are the other approach, and the JDK has no built-in support, so Spring bundles
+CGLIB (repackaged, in `spring-core`). It generates a **subclass** of your class at runtime and
+overrides each method. That means the proxy passes `instanceof` for both the class and its
+interfaces — but it inherits Java's rules about what can be overridden:
+
+- a `final` method cannot be overridden, so it cannot be intercepted;
+- a `private` method is not inherited at all;
+- the class itself must not be `final`.
+
+*One more piece.* Creating a subclass normally means running a constructor, which would run your
+constructor's side effects twice. Spring avoids that with **Objenesis**, which allocates an
+instance without invoking any constructor at all. Useful, and it has a consequence that catches
+everyone: the proxy's own fields are never assigned. That is the whole of "What a proxy does not
+carry over" below.
 
 ---
 
@@ -123,6 +173,23 @@ This cost this repo an hour in the events lab: an `@Async` listener whose latch 
 through the injected reference. The fix was to move the state into a separate bean.
 
 → `CglibLimitationsTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| The bean I injected is my class | It is usually a **subclass** of it, or an interface implementation |
+| Calling my own method still applies the annotation | **No.** Self-invocation skips the proxy entirely |
+| A proxy is my object with extra behaviour | It is a **different object** that delegates to yours |
+| Fields on the injected bean are set | On a CGLIB proxy they are **null** — no constructor ran |
+| `final` just means "do not override" | It also means **not advised**, silently |
+
+---
 
 ---
 

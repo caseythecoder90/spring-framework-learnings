@@ -9,15 +9,51 @@ right.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| `ContextRefreshedEvent` means "startup is beginning" | It is the **last** thing `refresh()` does. Every `SmartLifecycle` has already started |
-| A `SmartLifecycle` with no `getPhase()` starts early | Default phase is `Integer.MAX_VALUE`, so it starts **last** and stops **first** |
-| A `Lifecycle` bean gets started by the container | Only `SmartLifecycle` beans with `isAutoStartup()`. A plain `Lifecycle` never starts on its own |
-| A bean is a bean whenever it is created | A bean created too early misses every `BeanPostProcessor`, so it is **never proxied** |
-| `CommandLineRunner` is part of container startup | It runs after `refresh()` has completely finished, and in a web app after the port is open |
+1. **Read "Before this note".** Short, and mostly about which earlier note this depends on.
+2. **Run `RefreshOrderTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-startup -am test -Dtest=RefreshOrderTest
+   ```
+   It records the phases of `refresh()` in the order they happen, which is the spine of this note.
+3. **Read "The order"** against that recording.
+4. **Run and read `EagerInstantiationTest`.** This is the one with a real bug in it: a bean created
+   too early misses every `BeanPostProcessor` and is therefore never proxied.
+5. **Run and read `LifecyclePhasesTest`**, then read the `SmartLifecycle` section.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- What has already finished by the time `ContextRefreshedEvent` fires?
+- Why does my `SmartLifecycle` bean start last when I expected it first?
+- Why is one particular bean in my application never proxied, when the same annotation works
+  everywhere else?
+- When exactly does a `CommandLineRunner` run relative to the web server accepting traffic?
+
+---
+
+## Before this note
+
+**Read [bean lifecycle and DI](bean-lifecycle.md) first.** This note is the container-level view of
+the same story: that note is one bean from constructor to ready, this one is the whole context from
+`refresh()` to serving traffic. The "instantiated too early" section below only makes sense if you
+already know when `BeanPostProcessor`s run.
+
+**The Java you need** is minimal here — this is mostly Spring's own sequencing. Two things worth
+having in mind:
+
+*Static initialisation is not the same as bean creation.* A `static` block runs when the class is
+first loaded by the JVM, which may be long before or entirely independent of Spring creating a bean
+of that type. Anything you put in a static block is outside the container's control and outside its
+ordering guarantees.
+
+*The JVM shutdown hook.* `Runtime.getRuntime().addShutdownHook(...)` registers code to run when the
+JVM terminates normally. Spring Boot registers one to close the context, which is why `@PreDestroy`
+runs on Ctrl-C but not on `kill -9`. If a bean must flush something on exit, that distinction
+matters.
 
 ---
 
@@ -158,6 +194,23 @@ For anything that needs the `Environment` but must run before beans exist, the h
 because at that point there is no context to hold one.
 
 → `BootStartupTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| `ContextRefreshedEvent` means "startup is beginning" | It is the **last** thing `refresh()` does. Every `SmartLifecycle` has already started |
+| A `SmartLifecycle` with no `getPhase()` starts early | Default phase is `Integer.MAX_VALUE`, so it starts **last** and stops **first** |
+| A `Lifecycle` bean gets started by the container | Only `SmartLifecycle` beans with `isAutoStartup()`. A plain `Lifecycle` never starts on its own |
+| A bean is a bean whenever it is created | A bean created too early misses every `BeanPostProcessor`, so it is **never proxied** |
+| `CommandLineRunner` is part of container startup | It runs after `refresh()` has completely finished, and in a web app after the port is open |
+
+---
 
 ---
 
