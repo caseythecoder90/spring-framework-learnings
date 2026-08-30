@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+import { TRACKS, topicsInTrack } from '../data/topics';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<Base title="All topics | spring-framework-learnings" current="tracks">
+  <main class="shell">
+    <article>
+      <h1>All topics</h1>
+      <p class="lede">
+        Everything, grouped by track, including what is not written yet. If you are here to learn
+        rather than to look something up, <a href={`${base}/`}>start here</a> instead — this page is
+        a map, not a path.
+      </p>
+
+      <div class="tracks">
+        {
+          TRACKS.map((track) => (
+            <section class="track">
+              <h2>{track.title}</h2>
+              <p class="blurb">{track.blurb}</p>
+              {topicsInTrack(track.id).map((topic) => (
+                <div class={`topic ${topic.status}`}>
+                  <span class={`dot ${topic.status}`} />
+                  <span class="name">
+                    {topic.status === 'shipped' ? (
+                      <a href={`${base}/notes/${topic.slug}`}>{topic.title}</a>
+                    ) : (
+                      topic.title
+                    )}
+                  </span>
+                  {topic.tests && <span class="tests">{topic.tests} tests</span>}
+                </div>
+              ))}
+            </section>
+          ))
+        }
+      </div>
+
+      <h2 id="method">How these notes are written</h2>
+      <p>
+        The order matters, because writing the prose first produces notes that sound right and are
+        not. Read the implementation. Write a test that would fail if the claim were wrong in either
+        direction. Only then write the explanation, with a pointer to the test underneath it.
+      </p>
+      <p>
+        That discipline has caught this project being wrong repeatedly:
+        <code>AnnotationUtils.getAnnotation</code> stops one meta-level out and returns null rather
+        than failing; the native <code>@Retryable</code>'s <code>maxRetries</code> counts differently
+        from <code>spring-retry</code>'s <code>maxAttempts</code>; injection fires before an
+        unordered <code>BeanPostProcessor</code> sees the properties callback. Each of those was a
+        confident paragraph until a test disagreed.
+      </p>
+    </article>
+  </main>
+</Base>

@@ -1,61 +1,180 @@
 ---
 import Base from '../layouts/Base.astro';
-import { TRACKS, topicsInTrack } from '../data/topics';
+import { topicBySlug } from '../data/topics';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const STAGES = [
+  {
+    n: 1,
+    title: 'Foundations',
+    when: 'Start here. Not optional.',
+    why: 'Four features in the other tracks are the same mechanism wearing different annotations. Read these first and most of the rest becomes "oh, that again" rather than four separate things to memorise.',
+    time: 'Four evenings, or a weekend.',
+    slugs: ['annotations', 'proxies', 'bean-lifecycle', 'startup'],
+    after:
+      'You can explain why @Transactional silently does nothing, in four different situations, without looking any of them up.',
+  },
+  {
+    n: 2,
+    title: 'Then whichever track matches your work',
+    when: 'Pick one. You do not need all of them.',
+    why: 'These are independent of each other. Read the one you will use this month; come back for the others when you need them.',
+    time: 'A weekend per track.',
+    groups: [
+      { label: 'You touch a database', slugs: ['jdbctemplate', 'transactions'] },
+      { label: 'You fight configuration or auto-configuration', slugs: ['environment', 'property-binding', 'conditions'] },
+      { label: 'You write controllers', slugs: ['web-mvc'] },
+      { label: 'You run background work', slugs: ['scheduling', 'events', 'async', 'retry', 'caching'] },
+    ],
+    after: 'You can predict what a feature does before running it, and you know where its sharp edge is.',
+  },
+  {
+    n: 3,
+    title: 'Testing, last',
+    when: 'Once you have felt a slow test suite.',
+    why: 'This one lands properly only after you have written enough Spring tests to be annoyed by them. It assumes the lifecycle and transactions notes.',
+    time: 'An evening.',
+    slugs: ['testing'],
+    after: 'You can explain why your suite starts the context twenty times, and stop it.',
+  },
+];
+
+function link(slug: string) {
+  const topic = topicBySlug(slug);
+  return { slug, title: topic?.title ?? slug, blurb: topic?.blurb ?? '', tests: topic?.tests };
+}
 ---
 
-<Base title="spring-framework-learnings" current="tracks">
+<Base title="spring-framework-learnings" current="start">
   <main class="shell">
     <article>
-      <h1>How Spring actually behaves</h1>
+      <h1>Learn how Spring actually works</h1>
       <p class="lede">
-        It is very easy to write a confident, plausible, wrong explanation of a Spring internal. So
-        every topic here gets two things: a note written after reading the real source, and a lab
-        module whose tests prove what the note claims. <code>mvn test</code> is the fact-checker.
-      </p>
-
-      <div class="tracks">
-        {
-          TRACKS.map((track) => (
-            <section class="track">
-              <h2>{track.title}</h2>
-              <p class="blurb">{track.blurb}</p>
-              {topicsInTrack(track.id).map((topic) => (
-                <div class={`topic ${topic.status}`}>
-                  <span class={`dot ${topic.status}`} />
-                  <span class="name">
-                    {topic.status === 'shipped' ? (
-                      <a href={`${base}/notes/${topic.slug}`}>{topic.title}</a>
-                    ) : (
-                      topic.title
-                    )}
-                  </span>
-                  {topic.tests && <span class="tests">{topic.tests} tests</span>}
-                </div>
-              ))}
-            </section>
-          ))
-        }
-      </div>
-
-      <h2 id="method">How these notes are written</h2>
-      <p>
-        The order matters, because writing the prose first produces notes that sound right and are
-        not. Read the implementation. Write a test that would fail if the claim were wrong in either
-        direction. Only then write the explanation, with a pointer to the test underneath it.
+        Sixteen features, taken apart. Each one has a note written after reading the real Spring
+        source, a lab module whose tests prove what the note claims, and a guided walk through the
+        classes involved. 293 tests, all passing, all pinned to Spring Framework 7.0.9.
       </p>
       <p>
-        If you want to do the reading yourself, start with
-        <a href={`${base}/notes/reading-the-source`}>how to read Spring source</a>, then follow a
-        <a href={`${base}/paths`}>code path</a> — an ordered list of the classes a feature actually
-        goes through, with every class and method checked against the real Spring jars by a test.
+        The aim is narrow and specific: after this, the parts of Spring you currently treat as magic
+        should be mechanisms you could describe to someone else.
       </p>
 
-      <h2 id="version">Version under study</h2>
+      <h2 id="setup">First, once</h2>
+      <p>Clone it and check the tests pass. This takes a couple of minutes and everything else assumes it.</p>
+      <pre><code>git clone https://github.com/caseythecoder90/spring-framework-learnings
+cd spring-framework-learnings
+./mvnw test</code></pre>
       <p>
-        Spring Framework 7.0.9 and Spring Boot 4.1.1, on Java 21. Version-specific behaviour is
-        called out rather than smoothed over, because that is usually the part that bites on an
+        Then unpack the Spring sources, so you can read along and grep them. They land in
+        <code>.spring-sources/</code>, which is gitignored.
+      </p>
+      <pre><code>./tools/fetch-spring-sources.sh</code></pre>
+
+      <h2 id="how">How to work through a note</h2>
+      <p>
+        Every note has the same shape, and reading them in this order is much faster than reading
+        top to bottom:
+      </p>
+      <ol>
+        <li><b>Before this note</b> — the Java the feature sits on. Skip anything you already know.</li>
+        <li><b>Run the first test</b> the note names, and read it. The tests are the worked examples; the prose is commentary on them.</li>
+        <li><b>Read the mechanism sections</b>, running each test as you reach its pointer.</li>
+        <li><b>Reading the source yourself</b> — walk the code path once with a debugger. One pass beats an hour of reading.</li>
+        <li><b>What this changes for you</b> — the surprises, which only land once you have the model.</li>
+      </ol>
+      <p>
+        If you have never read framework source before, read
+        <a href={`${base}/notes/reading-the-source`}>how to read Spring source</a> first. It is the
+        method the whole project was written with: start from a stack, follow the annotation to its
+        <code>@Import</code>, and recognise which of five recurring shapes you are looking at.
+      </p>
+
+      <h2 id="path">The path</h2>
+
+      {
+        STAGES.map((stage) => (
+          <section class="stage">
+            <div class="stage-head">
+              <span class="stage-n">{stage.n}</span>
+              <div>
+                <h3 id={`stage-${stage.n}`}>{stage.title}</h3>
+                <p class="stage-when">{stage.when}</p>
+              </div>
+            </div>
+            <p>{stage.why}</p>
+
+            {stage.slugs && (
+              <ol class="stage-notes">
+                {stage.slugs.map((s) => {
+                  const t = link(s);
+                  return (
+                    <li>
+                      <a href={`${base}/notes/${t.slug}`}>{t.title}</a>
+                      {t.tests && <span class="stage-tests">{t.tests} tests</span>}
+                      <span class="stage-blurb">{t.blurb}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+
+            {stage.groups && (
+              <div class="stage-groups">
+                {stage.groups.map((g) => (
+                  <div class="stage-group">
+                    <div class="stage-group-label">{g.label}</div>
+                    <ol class="stage-notes">
+                      {g.slugs.map((s) => {
+                        const t = link(s);
+                        return (
+                          <li>
+                            <a href={`${base}/notes/${t.slug}`}>{t.title}</a>
+                            {t.tests && <span class="stage-tests">{t.tests} tests</span>}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p class="stage-after">
+              <b>Roughly {stage.time.toLowerCase()}</b> After it: {stage.after}
+            </p>
+          </section>
+        ))
+      }
+
+      <h2 id="hour">If you only have an hour</h2>
+      <p>The highest-value hour in the whole project, in order:</p>
+      <ol>
+        <li>
+          <a href={`${base}/notes/annotations#before-this-note`}>The Java underneath annotations</a>,
+          then run <code>JavaAnnotationBaselineTest</code>. Six tests, no Spring in any of them.
+        </li>
+        <li>
+          <a href={`${base}/notes/proxies#before-this-note`}>What a proxy actually is</a>, then
+          <a href={`${base}/notes/proxies#self-invocation`}> self-invocation</a>, then run
+          <code>SelfInvocationTest</code>.
+        </li>
+      </ol>
+      <p>
+        That is the single mechanism behind <code>@Transactional</code>, <code>@Cacheable</code>,
+        <code>@Async</code> and <code>@Retryable</code> all failing the same way. Nothing else here
+        pays back as fast.
+      </p>
+
+      <h2 id="rest">Everything else</h2>
+      <p>
+        <a href={`${base}/tracks`}>All topics</a>, grouped by track, including what is not written
+        yet. <a href={`${base}/paths`}>Code paths</a> are the guided source walks on their own, if
+        you would rather navigate by class than by feature.
+      </p>
+      <p>
+        Studying Spring Framework 7.0.9 and Spring Boot 4.1.1 on Java 21. Version-specific behaviour
+        is called out rather than smoothed over, because that is usually the part that bites on an
         upgrade.
       </p>
     </article>

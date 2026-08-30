@@ -10,7 +10,8 @@ interface Props {
 const { title, description = 'How Spring actually behaves, with a test pinning every claim.', current } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const nav = [
-  { href: `${base}/`, label: 'Tracks', key: 'tracks' },
+  { href: `${base}/`, label: 'Start here', key: 'start' },
+  { href: `${base}/tracks`, label: 'All topics', key: 'tracks' },
   { href: `${base}/notes/reading-the-source`, label: 'Reading the source', key: 'reading-the-source' },
   { href: `${base}/paths`, label: 'Code paths', key: 'paths' },
   { href: 'https://github.com/caseythecoder90/spring-framework-learnings', label: 'GitHub', key: 'github' },

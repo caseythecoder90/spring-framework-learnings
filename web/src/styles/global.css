@@ -310,3 +310,24 @@ footer.foot { border-top: 1px solid var(--border); margin-top: 4rem; padding: 1.
 .path-title { font-size: 14.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
 .path-summary { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
 .path-meta { font-family: var(--mono); font-size: 11px; color: var(--text-faint); margin-top: 0.25rem; }
+
+.stage { margin: 2rem 0 2.5rem; }
+.stage-head { display: flex; gap: 0.9rem; align-items: baseline; }
+.stage-n {
+  flex: none; width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  background: var(--accent-bg); color: var(--accent);
+  display: grid; place-items: center; font-family: var(--mono); font-size: 13px; font-weight: 600;
+}
+.stage-head h3 { margin: 0; font-size: 1.15rem; }
+.stage-when { margin: 0.1rem 0 0; font-size: 13px; color: var(--text-faint); }
+.stage-notes { list-style: decimal; padding-left: 1.4rem; margin: 0.9rem 0; }
+.stage-notes li { margin: 0.55rem 0; line-height: 1.5; }
+.stage-notes a { font-weight: 600; text-decoration: none; }
+.stage-notes a:hover { text-decoration: underline; }
+.stage-tests { font-family: var(--mono); font-size: 11px; color: var(--text-faint); margin-left: 0.5rem; }
+.stage-blurb { display: block; font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+.stage-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.9rem; margin: 1rem 0; }
+.stage-group { background: var(--surface-2); border-radius: var(--radius); padding: 0.8rem 1rem; }
+.stage-group-label { font-size: 12.5px; color: var(--text-dim); font-weight: 600; }
+.stage-group .stage-notes { margin: 0.5rem 0 0; }
+.stage-after { font-size: 13.5px; color: var(--text-dim); border-left: 2px solid var(--accent-border); padding-left: 0.85rem; margin-top: 1rem; }
