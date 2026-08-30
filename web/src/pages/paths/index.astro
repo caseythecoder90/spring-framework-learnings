@@ -1,9 +1,25 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import { TRACKS, topicBySlug } from '../../data/topics';
 
-const paths = (await getCollection('paths')).sort((a, b) => a.data.title.localeCompare(b.data.title));
-const pathData = Object.fromEntries(paths.map((p) => [p.id, p.data]));
+const paths = await getCollection('paths');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const byTrack = TRACKS.map((track) => ({
+  track,
+  entries: paths
+    .filter((p) => {
+      const topic = p.data.note ? topicBySlug(p.data.note) : undefined;
+      return topic?.track === track.id;
+    })
+    .sort((a, b) => a.data.title.localeCompare(b.data.title)),
+}));
+
+const orphans = paths.filter((p) => {
+  const topic = p.data.note ? topicBySlug(p.data.note) : undefined;
+  return !topic;
+});
 ---
 
 <Base title="Code paths | spring-framework-learnings" current="paths">
@@ -11,23 +27,55 @@ const pathData = Object.fromEntries(paths.map((p) => [p.id, p.data]));
     <article>
       <h1>Code paths</h1>
       <p class="lede">
-        Guided source reading. Each path is the ordered list of classes a feature actually goes
-        through, with a reason to care about every stop. Every class and method below is checked
-        against the real Spring jars by a test, so these cannot rot silently.
+        Guided source reading. Each path is the ordered list of classes one feature actually goes
+        through, with a reason to stop at every hop and a deep link into the Spring repository.
+        Every class and method is checked against the real jars by a test, so none of these can rot
+        silently.
+      </p>
+      <p>
+        New to reading framework source? Start with
+        <a href={`${base}/notes/reading-the-source`}>how to read Spring source</a> — the general
+        method — then pick a path below.
       </p>
 
-      {paths.map((p) => (
-        <section>
-          <h2 id={p.id}>{p.data.title}</h2>
-          <p>{p.data.summary}</p>
-          <div class="widget-slot" data-widget="path" data-arg={p.id}></div>
-        </section>
-      ))}
+      {
+        byTrack.map(({ track, entries }) =>
+          entries.length === 0 ? null : (
+            <section>
+              <h2 id={track.id}>{track.title}</h2>
+              <div class="path-index">
+                {entries.map((p) => (
+                  <a class="path-card" href={`${base}/paths/${p.id}`}>
+                    <span class="path-title">{p.data.title}</span>
+                    <span class="path-summary">{p.data.summary}</span>
+                    <span class="path-meta">
+                      {p.data.steps.length} stops
+                      {p.data.note && <> &middot; {topicBySlug(p.data.note)?.title}</>}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )
+        )
+      }
+
+      {
+        orphans.length > 0 && (
+          <section>
+            <h2 id="other">Other</h2>
+            <div class="path-index">
+              {orphans.map((p) => (
+                <a class="path-card" href={`${base}/paths/${p.id}`}>
+                  <span class="path-title">{p.data.title}</span>
+                  <span class="path-summary">{p.data.summary}</span>
+                  <span class="path-meta">{p.data.steps.length} stops</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
     </article>
   </main>
-
-  <script id="__paths" type="application/json" set:html={JSON.stringify(pathData)} is:inline />
-  <script>
-    import '../../scripts/mount-widgets';
-  </script>
 </Base>

@@ -317,7 +317,42 @@ Worth asking of any `@Scheduled` method in a code review:
 
 ---
 
-## Source map
+## Reading the source yourself
+
+Everything named below is already on your machine, but as compiled jars. Unpack the sources once —
+they land in `.spring-sources/`, which is gitignored:
+
+```bash
+./tools/fetch-spring-sources.sh spring-context
+```
+
+Now you can grep them, which is faster than any IDE search:
+
+```bash
+grep -rn "class SchedulingConfiguration" .spring-sources/
+```
+
+**Then walk the path below, in order.** It is not a list of classes to read in full. Each stop names
+one method and one thing to notice, and that is all you need from it — most of these classes are
+hundreds of lines you can safely ignore.
+
+Do it once with a debugger rather than by reading. Set a breakpoint where the path says to start,
+run the lab test for this note, and step through. One pass is worth more than an hour of reading,
+because you see the real values.
+
+New to this? [How to read Spring source](reading-the-source.md) is the general method — how to find
+the entry point for any feature, and the five shapes it will turn out to be.
+
+<!-- widget:path:scheduled-registration -->
+
+**You have understood this when you can say, without looking:** why a `@Scheduled` method that
+throws keeps its schedule.
+
+---
+
+## The classes involved
+
+For reference later. The ordered walk is above; this is the same material as a lookup table.
 
 Everything here lives in `spring-context`. Run
 [`tools/fetch-spring-sources.sh`](../tools/fetch-spring-sources.sh) to read along.

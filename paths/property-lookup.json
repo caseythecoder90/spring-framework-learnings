@@ -1,0 +1,32 @@
+{
+  "title": "How a property lookup is resolved",
+  "summary": "One loop over an ordered list of sources, returning the first hit. Short enough to read in full, and it settles every precedence question you will ever have.",
+  "entry": "Put a breakpoint in PropertySourcesPropertyResolver.getProperty and call environment.getProperty(\"anything\"). The loop you land in is the entire mechanism.",
+  "note": "environment",
+  "steps": [
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.env.PropertySourcesPropertyResolver",
+      "method": "getProperty",
+      "notice": "The loop. Iterate the sources in order, return on the first non-null. There is no merging, no priority arithmetic and no special casing; precedence is just list order. Read this once and you never have to guess again."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.env.MutablePropertySources",
+      "method": "addFirst",
+      "notice": "How that order is built. addFirst, addLast, addBefore and addAfter are the whole API, and Boot calls them in a fixed sequence at startup. Anything that wants to win a lookup has to get itself nearer the front."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.env.SystemEnvironmentPropertySource",
+      "method": "getProperty",
+      "notice": "The one source with special name handling. It maps MY_APP_TIMEOUT onto my.app.timeout, and only here - which is why the same spelling in an ordinary properties file resolves to nothing."
+    },
+    {
+      "module": "spring-core",
+      "class": "org.springframework.core.env.AbstractPropertyResolver",
+      "method": "resolveRequiredPlaceholders",
+      "notice": "Placeholders are resolved on read, not on load. That is why ${a.b} in one file can point at a value defined in a completely different source, and why a placeholder can resolve differently depending on when it is asked."
+    }
+  ]
+}

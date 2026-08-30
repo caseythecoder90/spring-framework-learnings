@@ -1,0 +1,48 @@
+{
+  "title": "How a string in a file becomes a typed field",
+  "summary": "The Binder walks your target type, asks each property source for a name it might have under any relaxed spelling, converts what comes back, and assembles the object.",
+  "entry": "Put a breakpoint in Binder.bindObject and start an app with any @ConfigurationProperties class. It recurses, so the first few frames show the shape of the whole algorithm.",
+  "note": "property-binding",
+  "steps": [
+    {
+      "module": "spring-boot",
+      "repo": "boot",
+      "file": "core/spring-boot/src/main/java/org/springframework/boot/context/properties/bind/Binder.java",
+      "class": "org.springframework.boot.context.properties.bind.Binder",
+      "method": "bind",
+      "notice": "The public entry point. Everything below is one recursive descent from here, so read this signature and then follow bindObject rather than trying to read the class top to bottom."
+    },
+    {
+      "module": "spring-boot",
+      "repo": "boot",
+      "file": "core/spring-boot/src/main/java/org/springframework/boot/context/properties/bind/Binder.java",
+      "class": "org.springframework.boot.context.properties.bind.Binder",
+      "method": "bindObject",
+      "notice": "The three-way branch that is the whole algorithm: is this an aggregate (list, map, array), a plain property, or a data object whose members need binding one at a time? Everything else is detail."
+    },
+    {
+      "module": "spring-boot",
+      "repo": "boot",
+      "file": "core/spring-boot/src/main/java/org/springframework/boot/context/properties/bind/Binder.java",
+      "class": "org.springframework.boot.context.properties.bind.Binder",
+      "method": "findProperty",
+      "notice": "Where relaxed binding actually happens. The Binder asks each source for one canonical name; matching the many spellings is the source's job, not the Binder's. That division is why an environment variable binds and the same spelling in a properties file does not."
+    },
+    {
+      "module": "spring-boot",
+      "repo": "boot",
+      "file": "core/spring-boot/src/main/java/org/springframework/boot/context/properties/bind/Binder.java",
+      "class": "org.springframework.boot.context.properties.bind.Binder",
+      "method": "bindDataObject",
+      "notice": "Chooses between constructor binding and setter binding by asking the BindConstructorProvider. This is the line that decides a record just works while a mutable class needs setters."
+    },
+    {
+      "module": "spring-boot",
+      "repo": "boot",
+      "file": "core/spring-boot/src/main/java/org/springframework/boot/context/properties/bind/BindConverter.java",
+      "class": "org.springframework.boot.context.properties.bind.BindConverter",
+      "method": "convert",
+      "notice": "Every value arrives as a String and leaves as the declared type. Note that the target is a ResolvableType, not a Class, which is how List<Duration> converts element by element."
+    }
+  ]
+}

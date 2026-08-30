@@ -1,0 +1,38 @@
+{
+  "title": "Why your test suite starts the context so many times",
+  "summary": "Every test class asks a cache for a context, keyed by its entire merged configuration. Reading the key is the fastest way to understand a slow suite.",
+  "entry": "Put a breakpoint in DefaultCacheAwareContextLoaderDelegate.loadContext and run two test classes. Watch whether the second one hits the cache, and if not, compare the two keys.",
+  "note": "testing",
+  "steps": [
+    {
+      "module": "spring-test",
+      "class": "org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate",
+      "method": "loadContext",
+      "notice": "Ask the cache, and only build a context on a miss. Every test class goes through here, so a breakpoint on the miss branch tells you exactly which classes are paying for a startup."
+    },
+    {
+      "module": "spring-test",
+      "class": "org.springframework.test.context.MergedContextConfiguration",
+      "method": "hashCode",
+      "notice": "The cache key, and the most useful thing in this note. Read what goes into it: configuration classes, locations, active profiles, property sources, context customisers and the parent. Two test classes differing in any of those get two contexts."
+    },
+    {
+      "module": "spring-test",
+      "class": "org.springframework.test.context.MergedContextConfiguration",
+      "method": "getContextCustomizers",
+      "notice": "Where @MockitoBean and friends enter the key. A bean override is a context customiser, so every distinct set of overrides is another cached context - the reason adding one mock to one class can slow the whole suite."
+    },
+    {
+      "module": "spring-test",
+      "class": "org.springframework.test.context.cache.DefaultContextCache",
+      "method": "logStatistics",
+      "notice": "Turn this logger up and it prints hits, misses and size after every test class. It is the quickest way to find out whether your suite is thrashing the cache, and it needs no code changes."
+    },
+    {
+      "module": "spring-test",
+      "class": "org.springframework.test.context.cache.DefaultContextCache",
+      "method": "remove",
+      "notice": "What @DirtiesContext calls. It evicts and closes the context, so the next class with that configuration pays a full startup. Worth seeing once to appreciate the cost."
+    }
+  ]
+}

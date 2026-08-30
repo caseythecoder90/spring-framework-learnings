@@ -295,3 +295,18 @@ footer.foot { border-top: 1px solid var(--border); margin-top: 4rem; padding: 1.
   border-bottom: 1px solid var(--border);
 }
 .cp-list > li:first-child .lc-phase { margin-top: 0; }
+
+.crumb { font-size: 13px; color: var(--text-faint); margin: 0 0 0.8rem; }
+.crumb a { color: var(--text-dim); text-decoration: none; }
+.crumb a:hover { color: var(--text); text-decoration: underline; }
+
+.path-index { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.8rem; margin: 1.2rem 0 2rem; }
+.path-card {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 0.9rem 1.05rem; text-decoration: none; color: inherit;
+}
+.path-card:hover { border-color: var(--border-strong); }
+.path-title { font-size: 14.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
+.path-summary { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+.path-meta { font-family: var(--mono); font-size: 11px; color: var(--text-faint); margin-top: 0.25rem; }
