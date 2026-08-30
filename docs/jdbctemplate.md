@@ -9,15 +9,76 @@ first.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
+1. **Read "Before this note".** Plain JDBC, briefly. Everything Spring does here is a wrapper over
+   five JDBC types, and the wrapper only makes sense if you can name them.
+2. **Run `ConnectionHandlingTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-jdbc -am test -Dtest=ConnectionHandlingTest
+   ```
+   Four tests, and they establish the single most important fact in this note: whether you are in a
+   transaction decides where the connection comes from.
+3. **Read "Where the connection comes from".**
+4. **Run and read `ExceptionTranslationTest`**, then the translation section. Pay attention to
+   `queryForObject` — its zero-row behaviour surprises everyone once.
+5. **Run and read `QueryApiTest`**, then "Three APIs".
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- How many database connections does a method actually take, and does a transaction change that?
+- Why does no Spring data access method declare `throws SQLException`?
+- Why does `queryForObject` throw when nothing matches, instead of returning `null`?
+- Which of `JdbcTemplate`, `NamedParameterJdbcTemplate` and `JdbcClient` should new code use?
+
+---
+
+## Before this note
+
+This is the bottom of the Data track, so there is no earlier note to read first. If you are heading
+for [transactions](transactions.md) next, read this one before it — that note builds directly on
+the connection handling described here.
+
+**The JDBC you need.** Five types, and Spring wraps all of them:
+
+| Type | What it is |
 |---|---|
-| One `JdbcTemplate` call, one connection | Only outside a transaction. Inside, they all share one |
-| `queryForObject` returns null when nothing matches | It **throws** |
-| Exception translation uses vendor error codes | Not since Framework 6. It uses JDBC 4 subclasses |
-| `JdbcTemplate` is the current API | `JdbcClient` has been the one to reach for since 6.1 |
-| `?` can take a list for an `IN` clause | It cannot. That is what named parameters are for |
+| `DataSource` | a factory for connections, almost always a pool |
+| `Connection` | one session with the database; a transaction lives on one of these |
+| `PreparedStatement` | a compiled statement with `?` placeholders |
+| `ResultSet` | a cursor over rows, positioned with `next()` |
+| `SQLException` | **checked**, and vendor-specific |
+
+Raw JDBC looks like this, and the shape is why `JdbcTemplate` exists:
+
+```java
+try (Connection c = dataSource.getConnection();
+     PreparedStatement ps = c.prepareStatement("SELECT name FROM widget WHERE id = ?")) {
+    ps.setString(1, id);
+    try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? rs.getString("name") : null;
+    }
+}                                    // and every line of it throws SQLException
+```
+
+Three things about that are worth naming, because each maps to something Spring does:
+
+*A pooled `close()` does not close anything.* `DataSource.getConnection()` usually hands you a
+wrapper from a pool; calling `close()` returns it to the pool. So "leaking a connection" means
+failing to return it, and the pool then runs dry — which presents as your application hanging, not
+as an error.
+
+*`SQLException` is checked and vendor-specific.* The same duplicate-key violation is error code
+`23505` on H2, `23505` on Postgres and `1062` on MySQL. Handling that portably by hand is
+miserable, which is the entire motivation for exception translation.
+
+*Autocommit is on by default.* Unless something calls `setAutoCommit(false)`, every statement
+commits as it executes. A transaction is that flag being turned off and a `commit()` or
+`rollback()` arriving later, on **that same `Connection` object** — which is why the connection
+question above matters so much.
 
 ---
 
@@ -115,6 +176,21 @@ It picks the underlying template from which `param()` overload you use, maps str
 and fixes the `queryForObject` sharp edge.
 
 → `QueryApiTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| One `JdbcTemplate` call, one connection | Only outside a transaction. Inside, they all share one |
+| `queryForObject` returns null when nothing matches | It **throws** |
+| Exception translation uses vendor error codes | Not since Framework 6. It uses JDBC 4 subclasses |
+| `JdbcTemplate` is the current API | `JdbcClient` has been the one to reach for since 6.1 |
+| `?` can take a list for an `IN` clause | It cannot. That is what named parameters are for |
 
 ---
 

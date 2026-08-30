@@ -6,18 +6,54 @@ right.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption people make | Reality |
-|---|---|
-| Publishing is fire-and-forget | It is a **synchronous method call** on the publishing thread |
-| Listeners are isolated | The first one to throw **breaks the publisher** and skips the rest |
-| It decouples components | It decouples *compilation*. At runtime it is still one call stack |
-| Events are ordered by registration | Unordered unless you add `@Order` |
-| `@TransactionalEventListener` always fires | With **no active transaction it is silently skipped** |
+1. **Read "Before this note".** Short, and the important part is that publishing is a method call.
+2. **Run `SynchronousPublishTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-events -am test -Dtest=SynchronousPublishTest
+   ```
+   Five tests, and they dismantle the usual mental model in about a minute.
+3. **Read "The publish path".**
+4. **Run and read `ListenerRegistrationTest`**, then the registration and ordering sections.
+5. **Run and read `AsyncListenerTest` and `TransactionalEventListenerTest`**, with the matching
+   sections and the interactive phase diagram. The no-transaction case is the one that causes
+   incidents.
+6. **Finish with "What this changes for you."**
 
-The mental model that keeps you out of trouble: `publishEvent` is a `for` loop over listeners with
-extra type matching. Nothing more.
+---
+
+## What you will be able to answer afterwards
+
+- Is publishing an event asynchronous? Does it isolate the publisher from a failing listener?
+- What happens to my business method when a listener throws?
+- What does `@Async` on a listener actually change, and what does it cost?
+- Why did my `@TransactionalEventListener` do nothing at all, with no error?
+
+---
+
+## Before this note
+
+**Read [the annotation model](annotations.md) and [the proxy model](proxies.md) first** if you have
+not. `@EventListener` is discovered by the former; `@Async` on a listener is the latter.
+[Transactions](transactions.md) is worth having read before the last section, though the note
+stands without it.
+
+**The Java you need:**
+
+*The observer pattern, and nothing more.* `publishEvent` is a `for` loop over matching listeners,
+calling each one. There is no queue, no broker, no thread hand-off. Once you picture a loop, every
+consequence in this note follows: the caller waits, the first exception stops the rest, and the
+whole thing is one stack frame deep in your own call stack.
+
+*Type erasure loses type arguments.* At runtime a `MyEvent<Order>` instance is just a `MyEvent`.
+Listener matching is by type, so a listener declared for `MyEvent<Order>` may never match an event
+published as `MyEvent<?>` — the information needed to decide was erased by the compiler. This is
+the cause of the "my listener is never called" case that has nothing to do with configuration.
+
+*`ThreadLocal` is per thread, by definition.* A transaction and a security context are both stored
+in one. That is the entire reason an `@Async` listener does not inherit either: a different thread
+looks up the same `ThreadLocal` and finds nothing there.
 
 ---
 
@@ -221,6 +257,24 @@ They are the wrong tool when you need:
 
 The honest summary of what you get is compile-time decoupling. The call stack stays exactly as
 coupled as it was.
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption people make | Reality |
+|---|---|
+| Publishing is fire-and-forget | It is a **synchronous method call** on the publishing thread |
+| Listeners are isolated | The first one to throw **breaks the publisher** and skips the rest |
+| It decouples components | It decouples *compilation*. At runtime it is still one call stack |
+| Events are ordered by registration | Unordered unless you add `@Order` |
+| `@TransactionalEventListener` always fires | With **no active transaction it is silently skipped** |
+
+The mental model that keeps you out of trouble: `publishEvent` is a `for` loop over listeners with
+extra type matching. Nothing more.
 
 ---
 

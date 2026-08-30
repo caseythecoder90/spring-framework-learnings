@@ -6,16 +6,62 @@ test is right.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Thing | Reality |
-|---|---|
-| Default pool size in Boot | **1 thread for the whole application** |
-| A slow job | blocks every other `@Scheduled` method, not just itself |
-| `fixedRate` | measured from the **start** of the previous run |
-| `fixedDelay` | measured from the **end** of the previous run |
-| A job that throws | is logged and **keeps its schedule** — nothing else happens |
-| Two app instances | both run the job; Spring has no opinion about that |
+1. **Read "Before this note".** Mostly `ScheduledExecutorService`, which is what Spring is wrapping
+   and where the surprising timing behaviour actually comes from.
+2. **Run `SchedulerWiringTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-scheduling -am test -Dtest=SchedulerWiringTest
+   ```
+   What `@EnableScheduling` registers, and what each annotated method becomes.
+3. **Read "From annotation to running task" and "Which scheduler actually runs it"**, using the
+   interactive lookup below.
+4. **Run and read `SingleThreadStarvationTest`.** This is the production bug the note exists for.
+   Then read "The pool of one".
+5. **Run and read `FixedRateVsFixedDelayTest`** and `ScheduledErrorHandlingTest`, with the matching
+   sections.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Why did my unrelated scheduled job stop running when a different one got slow?
+- What is the real difference between `fixedRate` and `fixedDelay` when the work is slow?
+- What happens to a scheduled method that throws — does it keep running?
+- Which thread pool is my job actually on, and how many threads does it have?
+
+---
+
+## Before this note
+
+**No earlier note is required**, though [the proxy model](proxies.md) explains why `@Scheduled` and
+`@Transactional` compose correctly on the same method.
+
+**The Java you need.** Spring's scheduling is a thin layer over
+`java.util.concurrent.ScheduledExecutorService`, and the two behaviours people find surprising are
+the JDK's, not Spring's:
+
+```java
+ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
+pool.scheduleAtFixedRate(task, 0, 1, SECONDS);       // start to start
+pool.scheduleWithFixedDelay(task, 0, 1, SECONDS);    // end to start
+```
+
+*Fixed rate measures start-to-start; fixed delay measures end-to-start.* If the work takes longer
+than the interval, fixed rate cannot keep up — and because the executor never runs the same task
+concurrently with itself, late executions queue and then run back to back. Spring's `fixedRate` and
+`fixedDelay` are these two, renamed.
+
+*A pool of N runs N tasks at once, and everything else waits.* A `ScheduledExecutorService` with one
+thread runs one task at a time, no matter how many are due. Nothing warns you that the others are
+queued; they are simply late.
+
+*An exception kills a repeating task.* This is the important one. If a task submitted to
+`scheduleAtFixedRate` throws, the executor **cancels that schedule permanently** — silently, with no
+further executions ever. Spring wraps every scheduled method to stop that from happening, which is
+why a failing job keeps running instead, and why the failure is only a log line.
 
 ---
 
@@ -238,6 +284,22 @@ spring:
         await-termination: true
         await-termination-period: 30s
 ```
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Thing | Reality |
+|---|---|
+| Default pool size in Boot | **1 thread for the whole application** |
+| A slow job | blocks every other `@Scheduled` method, not just itself |
+| `fixedRate` | measured from the **start** of the previous run |
+| `fixedDelay` | measured from the **end** of the previous run |
+| A job that throws | is logged and **keeps its schedule** — nothing else happens |
+| Two app instances | both run the job; Spring has no opinion about that |
 
 ---
 

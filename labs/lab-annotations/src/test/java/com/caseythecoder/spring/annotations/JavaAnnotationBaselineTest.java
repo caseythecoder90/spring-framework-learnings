@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * annotations are interfaces, they are only visible at runtime if they say so, reflection does not
  * traverse them, and the instance you are handed is already a proxy before Spring gets involved.
  *
- * <p>Notes: docs/annotations.md, "The Java underneath".
+ * <p>Notes: docs/annotations.md, "Before this note".
  */
 class JavaAnnotationBaselineTest {
 

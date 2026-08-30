@@ -30,15 +30,51 @@ Everything below is the native one.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| `maxRetries = 2` runs the method twice | It runs it **three** times |
-| Retry needs a dependency | Not since Framework 7 |
-| Retrying inside a transaction retries the query | The transaction is usually **outside** the retry |
-| An internal call is retried | It is not. Same proxy rule as everywhere else |
-| `@ConcurrencyLimit` rejects excess callers | The default **blocks** them |
+1. **Read "Read this first if you are on Boot 3.x"** just above — the annotation you already know
+   may not be the annotation this note describes.
+2. **Read "Before this note".**
+3. **Run `NativeRetryTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-retry -am test -Dtest=NativeRetryTest
+   ```
+   Start with the first test: it pins what `maxRetries` counts, which is the thing that changes
+   behaviour on a migration.
+4. **Read "Native retry in Framework 7".**
+5. **Run and read `BackoffAndLimitTest`**, then "Backoff" and "Concurrency limits".
+6. **Read "Retry and transactions"**, which is where retry stops being a local concern.
+7. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Is `@Retryable` in my project the Framework one or the `spring-retry` one, and does it matter?
+- How many times does `maxRetries = 2` actually run my method?
+- Does each retry get a fresh transaction, or retry inside the failed one?
+- What does `@ConcurrencyLimit` do to callers over the limit — reject them, or block them?
+
+---
+
+## Before this note
+
+**Read [the proxy model](proxies.md) first.** Retry is an interceptor, so a self-call is not
+retried, and nothing tells you. [Transactions](transactions.md) matters for the ordering section
+near the end.
+
+**The Java you need** is light here — retry is mostly policy rather than mechanism. Two things:
+
+*Exception hierarchies decide what is retryable.* `includes` and `excludes` are matched by
+assignability, so listing `IOException` also covers `SocketTimeoutException` and every other
+subclass. Listing a superclass is a wider net than people intend; listing `Exception` catches
+programming errors and retries them three times.
+
+*Exponential backoff is multiplication, with two guards.* `delay * multiplier^attempt` grows fast:
+starting at one second with a multiplier of 2, the fifth retry waits sixteen seconds and the tenth
+waits over eight minutes. `maxDelay` caps it. `jitter` randomises it, which matters the moment you
+have more than one instance — without it, every replica that failed at the same moment retries at
+the same moment.
 
 ---
 
@@ -132,6 +168,21 @@ lambda, or a retry around something you do not own:
 ```java
 new RetryTemplate().execute(() -> client.fetch(id));
 ```
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| `maxRetries = 2` runs the method twice | It runs it **three** times |
+| Retry needs a dependency | Not since Framework 7 |
+| Retrying inside a transaction retries the query | The transaction is usually **outside** the retry |
+| An internal call is retried | It is not. Same proxy rule as everywhere else |
+| `@ConcurrencyLimit` rejects excess callers | The default **blocks** them |
 
 ---
 

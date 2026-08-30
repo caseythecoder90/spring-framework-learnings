@@ -47,6 +47,11 @@ the two that pay off fastest in a code review.
 
 ## How a note gets written
 
+Two things matter: how the material is **found**, and how the note is **shaped**. They are different
+problems and the second one took a rewrite to get right.
+
+### Finding the material
+
 The order matters. Writing the prose first produces confident, plausible, wrong notes.
 
 **1. Read the actual source.**
@@ -68,24 +73,29 @@ timing genuinely is the subject, assert lower bounds and differences rather than
 **4. Record what surprised you.** A note that only restates the reference documentation is not worth
 keeping. The parts worth writing down are the ones you had wrong beforehand.
 
-The ones this project has produced so far:
+### Shaping the note
 
-- The `SCHEDULED_ANNOTATION_PROCESSOR_BEAN_NAME` **value** changed in Framework 7. Code that
-  hard-codes the string instead of the constant breaks on upgrade.
-- `EventListenerMethodProcessor` scans bean *definitions*, so `@Lazy` beans do get their listeners
-  registered — but prototype-scoped beans get a fresh instance per event.
-- Two `@TransactionalEventListener` methods in the same phase with no `@Order` run in an
-  unspecified order. The first draft of that test asserted an order that happened to hold once.
-- `@ConditionalOnMissingBean` between two of your own `@Configuration` classes does not quietly pick
-  one. In the unlucky order it registers **both**, and the failure surfaces later as
-  `NoUniqueBeanDefinitionException` from an injection point that looks unrelated.
-- Relaxed binding does not give you `MY_SERVICE_READTIMEOUT` on its own. That mapping comes from
-  `SystemEnvironmentPropertyMapper`, which only applies to a property source that declares itself
-  to hold environment variables — the same key in an `application.properties` binds to nothing.
-- A single `@ExceptionHandler(RuntimeException.class)` on a controller shadows `@ResponseStatus`,
-  `ResponseStatusException` **and** every `@ControllerAdvice`, for that controller only.
-- A servlet filter's `catch` block sees a `ServletException`, not the exception the controller
-  actually threw. The one you want is one `getCause()` away.
+"Record what surprised you" produces a good reference and a **bad first read**. A surprises table
+only lands if the reader already had the assumption; opening with one leaves someone learning the
+topic with a list of unfamiliar assertions and no mental model to hang them on.
+
+So every note follows this order:
+
+| Section | Purpose |
+|---|---|
+| **How to work through this note** | An explicit path. Which test to run first, which section next. The worked examples are the tests, and without this they stay buried behind the prose. |
+| **What you will be able to answer afterwards** | Three or four concrete questions. Orientation, not payoff. |
+| **Before this note** | Which earlier note to read first, then the **Java** the note leans on, inline and sufficient. No clicking away. |
+| *the mechanism* | The body, each section ending in a `→ TestName` pointer. |
+| **What this changes for you** | The surprises table, moved here where it can actually land. |
+| Review checklist, code path, source map | Unchanged. |
+
+The prerequisites section is the part that is easy to get wrong. It is not a Java tutorial — the
+reader is a professional. It is the specific corner of Java the feature sits in, which is usually
+one most people have never needed: annotations are interfaces with `CLASS` retention by default,
+`Proxy.newProxyInstance` takes interfaces only, `ThreadPoolExecutor` grows only when the queue is
+full. Where those claims can be tested, test them — `lab-annotations` has a
+`JavaAnnotationBaselineTest` with no Spring in it at all.
 
 ---
 

@@ -10,16 +10,59 @@ and once that is concrete, "why is that bean not there" stops being a mystery.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| Auto-configuration is a special mechanism | It is ordinary `@Configuration` classes listed in a file, imported last |
-| `@ConditionalOnMissingBean` means "if the user did not define one" | It means "if nothing is registered **at the moment this is evaluated**" |
-| So it works the same in my own code | It does not. Nothing sorts your `@Configuration` classes, so the answer depends on registration order |
-| A condition looks at beans | It looks at bean **definitions**. Nothing is instantiated while conditions run |
-| `@ConditionalOnClass` on a missing class breaks startup | The annotation is read from bytecode, so the class is never loaded. A missing class is a "no", not an error |
-| Finding out why a bean is missing is hard | `--debug` prints a report of every condition and its reason |
+1. **Read "Before this note".** The important idea is that a condition reads **bytecode**, not
+   loaded classes, and that one fact explains most of the surprising behaviour.
+2. **Run `ConditionalOnPropertyTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-conditions -am test -Dtest=ConditionalOnPropertyTest
+   ```
+   The simplest form, and a gentle introduction to `ApplicationContextRunner`, which this lab uses
+   throughout.
+3. **Read "The mechanism, in four sentences".**
+4. **Run and read `ConditionalOnMissingBeanTest`**, then the section on why auto-configuration can
+   use it and you cannot. This is the sharpest edge in the note.
+5. **Run and read `CustomConditionTest`** if you ever intend to write your own.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Why does `@ConditionalOnMissingBean` work reliably in Boot's code and unreliably in mine?
+- How can `@ConditionalOnClass` name a class that is not on the classpath without exploding?
+- What is actually being inspected when a condition runs — beans, or bean definitions?
+- How do I find out why a bean I expected is not there?
+
+---
+
+## Before this note
+
+**Read [bean lifecycle and DI](bean-lifecycle.md) first**, or at least know the difference between
+a *bean definition* and a *bean instance*. Conditions run entirely in the definition phase, before
+anything is instantiated, and this note leans on that distinction constantly.
+
+**The Java you need:**
+
+*Loading a class and naming a class are different acts.* `Class.forName("com.example.Missing")`
+throws `ClassNotFoundException`. But a **string** naming that class costs nothing, and reading an
+annotation's attributes out of a class file costs nothing either.
+
+That distinction is the whole trick behind `@ConditionalOnClass`. If Spring loaded the annotation
+normally, referencing an absent class would fail immediately. Instead it reads the attributes
+straight from the bytecode with ASM, as strings, and asks whether that name is resolvable. A missing
+class is an answer, not an error.
+
+*Annotation attribute values are stored as descriptors.* In the class file,
+`@ConditionalOnClass(Foo.class)` is recorded as the string `Lcom/example/Foo;`. Nothing needs to
+load `Foo` to read it. This is also how Boot ships one jar that configures thirty optional
+libraries without requiring any of them.
+
+*There is no ordering guarantee between your own classes.* Java defines no order for classpath
+scanning results, and Spring does not sort your `@Configuration` classes. Auto-configuration **is**
+sorted, explicitly, and imported last — which is the entire reason `@ConditionalOnMissingBean` is
+dependable there and a coin flip in your own code.
 
 ---
 
@@ -151,6 +194,22 @@ spring:
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
 ```
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| Auto-configuration is a special mechanism | It is ordinary `@Configuration` classes listed in a file, imported last |
+| `@ConditionalOnMissingBean` means "if the user did not define one" | It means "if nothing is registered **at the moment this is evaluated**" |
+| So it works the same in my own code | It does not. Nothing sorts your `@Configuration` classes, so the answer depends on registration order |
+| A condition looks at beans | It looks at bean **definitions**. Nothing is instantiated while conditions run |
+| `@ConditionalOnClass` on a missing class breaks startup | The annotation is read from bytecode, so the class is never loaded. A missing class is a "no", not an error |
+| Finding out why a bean is missing is hard | `--debug` prints a report of every condition and its reason |
 
 ---
 

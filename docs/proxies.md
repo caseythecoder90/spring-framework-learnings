@@ -191,8 +191,6 @@ surprise people:
 
 ---
 
----
-
 ## Review checklist
 
 - [ ] Does any annotated method get called from inside the same class?

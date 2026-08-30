@@ -10,15 +10,64 @@ so if [the proxy model](proxies.md) is fresh, most of this is already familiar.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| No executor configured means a sensible default | It means a **new unbounded thread per call** |
-| `max-size: 200` gives me up to 200 threads | Not with the default queue. The pool **never grows** |
-| The exception will surface somewhere | On a `void` method it goes to a handler that only logs |
-| The transaction carries across | It does not. Neither does `SecurityContext` or MDC |
-| `@Async` on an internal call still works | It runs inline, synchronously, silently |
+1. **Read "Before this note".** `ThreadPoolExecutor`'s growth rule is the whole of the second half
+   of this note, and it is a JDK behaviour rather than a Spring one.
+2. **Run `AsyncExecutorResolutionTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-async -am test -Dtest=AsyncExecutorResolutionTest
+   ```
+   Which executor your method actually runs on, including the alarming default.
+3. **Read "Which executor runs it".**
+4. **Run and read `ThreadPoolBehaviourTest`**, then "The queue fills before the pool grows". If you
+   read one section of this note, make it that one.
+5. **Run and read `AsyncSemanticsTest`**, then "What you give up".
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Which thread pool does an `@Async` method use when I have not configured one?
+- Why does raising `max-size` on my executor change nothing at all?
+- Where does the exception go when an `@Async` method throws?
+- Why is there no transaction, no security context and no MDC on the async thread?
+
+---
+
+## Before this note
+
+**Read [the proxy model](proxies.md) first** — `@Async` is an interceptor and fails the same way as
+every other one. [Scheduling](scheduling.md) is a useful companion: same package, same executor
+concepts, different trigger.
+
+**The Java you need.** All of it `java.util.concurrent`:
+
+*`ExecutorService` accepts work and returns a `Future`.* `Future.get()` blocks until the result
+exists and rethrows any failure wrapped in an `ExecutionException`. `CompletableFuture` adds
+composition — `thenApply`, `thenCompose`, `exceptionally` — without changing that basic contract.
+
+*A `void` task has nowhere to put an exception.* If nothing holds a `Future`, a thrown exception has
+no destination: the thread dies quietly, or an uncaught-exception handler logs it. That is not a
+Spring design choice, it is the shape of the problem, and it is why the return type of an `@Async`
+method decides where its exceptions end up.
+
+*`ThreadPoolExecutor` grows only when the queue is full.* This is the one to actually memorise:
+
+```
+task arrives
+  ├─ fewer threads than core?      -> start a new thread
+  ├─ otherwise, can the queue take it?  -> queue it
+  └─ queue full and below max?     -> start a new thread
+```
+
+Read it twice. With an **unbounded** queue the third branch is unreachable, so `maximumPoolSize` is
+dead configuration and the pool never exceeds its core size. Spring does not change this; it just
+inherits it, and Boot's default queue is unbounded.
+
+*`ThreadLocal` does not cross threads.* Same fact as in the events note, and the reason a
+transaction does not follow the hand-off.
 
 ---
 
@@ -103,6 +152,21 @@ propagation as something you opt into deliberately rather than assume.
 `@Transactional` and `@Cacheable`; see [the proxy model](proxies.md).
 
 → `AsyncSemanticsTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| No executor configured means a sensible default | It means a **new unbounded thread per call** |
+| `max-size: 200` gives me up to 200 threads | Not with the default queue. The pool **never grows** |
+| The exception will surface somewhere | On a `void` method it goes to a handler that only logs |
+| The transaction carries across | It does not. Neither does `SecurityContext` or MDC |
+| `@Async` on an internal call still works | It runs inline, synchronously, silently |
 
 ---
 

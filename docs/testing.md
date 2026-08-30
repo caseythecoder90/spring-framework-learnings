@@ -10,15 +10,53 @@ you think they are.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| Every test class starts its own `ApplicationContext` | Contexts are **cached and shared** by configuration. Identical configuration, one startup |
-| Adding a property to one test class is free | It is part of the cache key, so it buys a whole second context |
-| `@MockitoBean` just swaps a bean | It is part of the cache key too. Every distinct set of overrides is another context |
-| `@DirtiesContext` cleans up after a messy test | It **evicts the cached context**, so the next class with that configuration pays full price |
-| A `@Transactional` test behaves like production | It runs in a transaction that is **rolled back**, so nothing that waits for a commit ever happens |
+1. **Read "Before this note".** The JUnit 5 extension model in one paragraph, and why the context
+   cache exists at all.
+2. **Run `ContextCachingTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-testing -am test -Dtest=ContextCachingTest
+   ```
+   It demonstrates the cache and, more usefully, what silently evicts from it.
+3. **Read "The context cache"** and study the key. Most slow test suites are explained by that list.
+4. **Read "Slices" and "Bean overrides."**
+5. **Run and read `TransactionalTestTest`**, then the transactional-test section. The rollback
+   behaviour hides a whole class of bug.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Why does my test suite start the application context twenty times?
+- What exactly goes into the context cache key?
+- What does `@DirtiesContext` actually cost?
+- Why does a `@Transactional` test pass when the same code fails in production?
+
+---
+
+## Before this note
+
+**Read [bean lifecycle and DI](bean-lifecycle.md) and [transactions](transactions.md) first.** This
+note is about the container being started repeatedly and about transactions that are deliberately
+rolled back, so both are assumed.
+
+**The Java and JUnit you need:**
+
+*JUnit 5 runs on extensions.* `SpringExtension` hooks the lifecycle callbacks JUnit exposes — before
+all, before each, after each — and that is the entire integration. There is no test runner magic;
+Spring is a guest in JUnit's lifecycle.
+
+*Static state outlives a test class.* JUnit creates a new test **instance** per test method by
+default, but statics belong to the class and the classloader, and they persist for the whole JVM.
+The context cache is a static map, which is precisely why contexts survive between test classes —
+and why a test that mutates global state can affect a class that runs much later.
+
+*Starting a Spring context is expensive, and the cost is per distinct configuration.* Classpath
+scanning, bean creation, sometimes a connection pool and an embedded database. Caching is the only
+reason an integration suite finishes in minutes rather than hours, so anything that makes two test
+classes look different to the cache is quietly buying another full startup.
 
 ---
 
@@ -126,6 +164,21 @@ test really does suspend the test's transaction and commit independently — whi
 the rollback and leaves rows behind. See [transactions](transactions.md).
 
 → `TransactionalTestTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| Every test class starts its own `ApplicationContext` | Contexts are **cached and shared** by configuration. Identical configuration, one startup |
+| Adding a property to one test class is free | It is part of the cache key, so it buys a whole second context |
+| `@MockitoBean` just swaps a bean | It is part of the cache key too. Every distinct set of overrides is another context |
+| `@DirtiesContext` cleans up after a messy test | It **evicts the cached context**, so the next class with that configuration pays full price |
+| A `@Transactional` test behaves like production | It runs in a transaction that is **rolled back**, so nothing that waits for a commit ever happens |
 
 ---
 

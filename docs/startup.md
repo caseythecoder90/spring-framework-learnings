@@ -212,8 +212,6 @@ surprise people:
 
 ---
 
----
-
 ## Review checklist
 
 - [ ] Is any `@Bean` method returning a `BeanFactoryPostProcessor` or `BeanPostProcessor` non-static,

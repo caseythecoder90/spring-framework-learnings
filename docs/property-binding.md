@@ -10,15 +10,55 @@ for three weeks before anybody notices, because nothing fails when a property do
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| `@Value` and `@ConfigurationProperties` are two spellings of one thing | Only the second one goes through the Binder. `@Value` gets no relaxed binding and no conversion beyond `ConversionService` |
-| A missing property is an error | A missing `@Value` fails the context. A missing bound property is silently left at `null` or `0` |
-| `MY_APP_TIMEOUT` binds because the binder is clever | It binds because the source says it holds environment variables. The same key in an ordinary property source binds to nothing |
-| A `@ConfigurationProperties` class needs setters | Since Boot 3, one parameterised constructor means constructor binding. A record just works |
-| Map keys get relaxed too | They do not. A map key is data, and keeps its exact spelling |
+1. **Read "Before this note".** The Java is about how a `String` from a file becomes a typed field,
+   and why generics survive the trip.
+2. **Run `RelaxedBindingTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-binding -am test -Dtest=RelaxedBindingTest
+   ```
+   Which spellings of a property name bind to which field, and — more usefully — which do not.
+3. **Read "Relaxed binding, and where it stops".**
+4. **Run and read `ConstructorBindingTest`**, then that section. If you write records, this is the
+   part that matters most.
+5. **Run and read `ConversionAndValidationTest`**, then "Conversion".
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Which spellings of a property name bind to `readTimeout`, and which silently do not?
+- Why does `MY_APP_READ_TIMEOUT` work as an environment variable but not in a properties file?
+- When do I need setters on a `@ConfigurationProperties` class, and when will a record do?
+- Why did my missing property leave a `null` instead of failing at startup?
+
+---
+
+## Before this note
+
+**Read [the annotation model](annotations.md) first** if you have not — `@ConfigurationProperties`
+is found the same way everything else is. [Environment and profiles](environment.md) pairs with
+this note: that one is *where values come from*, this one is *how they become objects*. Either
+order works.
+
+**The Java you need:**
+
+*Everything starts as a `String`.* A properties file, a YAML file and an environment variable all
+produce strings. Every typed field — `Duration`, `int`, `List<String>`, an enum, a custom type — is
+the result of a conversion, and conversion is a thing that can fail at startup.
+
+*Generics survive on fields, not on values.* Type erasure removes type arguments from *instances*
+at runtime: a `List<String>` object cannot tell you it holds strings. But the **declaration** keeps
+them — `Field.getGenericType()` reports `List<String>` exactly. Spring reads the declaration, which
+is how it knows to convert each element of a list, or the values of a `Map<String, Duration>`.
+`ResolvableType` is the class that walks those declarations.
+
+*JavaBeans conventions.* The old contract is a no-arg constructor plus `getX`/`setX` pairs, and it
+requires mutable fields. A **record** has none of that: it is final, has one canonical constructor,
+and its accessors are `x()` rather than `getX()`. That mismatch is exactly why constructor binding
+exists as a separate mechanism, and why a record binds without a single setter.
 
 ---
 
@@ -134,6 +174,21 @@ The cost is one annotation and a validation dependency. Put it on every properti
 value the application cannot invent a sensible answer for.
 
 → `ConversionAndValidationTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| `@Value` and `@ConfigurationProperties` are two spellings of one thing | Only the second one goes through the Binder. `@Value` gets no relaxed binding and no conversion beyond `ConversionService` |
+| A missing property is an error | A missing `@Value` fails the context. A missing bound property is silently left at `null` or `0` |
+| `MY_APP_TIMEOUT` binds because the binder is clever | It binds because the source says it holds environment variables. The same key in an ordinary property source binds to nothing |
+| A `@ConfigurationProperties` class needs setters | Since Boot 3, one parameterised constructor means constructor binding. A record just works |
+| Map keys get relaxed too | They do not. A map key is data, and keeps its exact spelling |
 
 ---
 

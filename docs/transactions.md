@@ -10,15 +10,60 @@ Every assertion comes down to the same question: **what is left in the table aft
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| An exception rolls the transaction back | Only `RuntimeException` and `Error`. A checked exception **commits** |
-| Catching the inner exception means you recovered | With `REQUIRED` it does not. The commit throws `UnexpectedRollbackException` |
-| `REQUIRES_NEW` and `NESTED` are much the same | One takes a second connection, the other a savepoint. Only one survives an outer rollback |
-| `readOnly = true` stops writes | It is a hint. On plain JDBC the write goes through |
-| `@Transactional` works wherever you put it | Not on a non-public method, not on a self-call, not on another thread — and it never says so |
+1. **Read "Before this note".** It is short, and the JDBC half of it is what a transaction actually
+   is at the driver level.
+2. **Run `TransactionBoundariesTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-transactions -am test -Dtest=TransactionBoundariesTest
+   ```
+   Where a transaction starts and ends, and the places `@Transactional` silently does nothing.
+3. **Read "From annotation to behaviour".**
+4. **Play with the propagation matrix below**, then run and read `PropagationTest`. Do these
+   together — the widget tells you what happens, the test proves it against a real database.
+5. **Run and read `RollbackRulesTest`**, then the rollback sections. The rollback-only trap is the
+   one that causes real incidents.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- Which exceptions roll a transaction back, and which quietly commit?
+- What is the actual difference between `REQUIRES_NEW` and `NESTED`?
+- Why do I get `UnexpectedRollbackException` from a method that caught its own exception?
+- Where does `@Transactional` silently do nothing at all?
+
+---
+
+## Before this note
+
+**Read two notes first.** [JdbcTemplate and DataSource](jdbctemplate.md) for where connections come
+from, because a transaction is a property of one connection. And [the proxy model](proxies.md),
+because `@Transactional` is an interceptor and inherits every proxy limitation.
+
+**The JDBC you need.** A database transaction is not a Spring concept. At the driver level it is
+three calls on a single `Connection`:
+
+```java
+connection.setAutoCommit(false);   // begin
+// ... statements ...
+connection.commit();               // or connection.rollback();
+```
+
+That is all `PlatformTransactionManager` is automating. Two consequences follow directly:
+
+*A transaction is bound to one connection.* Everything that must be in the transaction has to run
+on that same `Connection` object. Spring binds it to the current **thread** in
+`TransactionSynchronizationManager`, which is precisely why a transaction does not follow work onto
+an [`@Async`](async.md) thread — a different thread looks up the binding and finds nothing.
+
+*Savepoints are a JDBC feature, not a Spring one.* `connection.setSavepoint()` marks a point you can
+roll back to without abandoning the whole transaction. That single call is the entire difference
+between `NESTED` (a savepoint on the existing connection) and `REQUIRES_NEW` (a genuinely separate
+transaction on a second connection). Knowing that makes the propagation table below read as
+mechanics rather than as a list to memorise.
 
 ---
 
@@ -223,6 +268,21 @@ is how routing `DataSource`s send read-only transactions to a replica. Useful, a
 with safety.
 
 → `TransactionBoundariesTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| An exception rolls the transaction back | Only `RuntimeException` and `Error`. A checked exception **commits** |
+| Catching the inner exception means you recovered | With `REQUIRED` it does not. The commit throws `UnexpectedRollbackException` |
+| `REQUIRES_NEW` and `NESTED` are much the same | One takes a second connection, the other a savepoint. Only one survives an outer rollback |
+| `readOnly = true` stops writes | It is a hint. On plain JDBC the write goes through |
+| `@Transactional` works wherever you put it | Not on a non-public method, not on a self-call, not on another thread — and it never says so |
 
 ---
 

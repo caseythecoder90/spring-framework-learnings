@@ -9,15 +9,56 @@ same shape, and it is not complicated once you stop thinking of the `Environment
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| The `Environment` is a map of properties | It is an **ordered list of maps**. Every lookup returns the first hit |
-| A profile-specific file replaces the base file | It is **additive**. `application.yaml` is still read, and only the keys the profile file mentions are overridden |
-| An empty value means unset | An empty string is a value, and it shadows every source below it |
-| `@Profile("default")` means "always" | It means "when no profile is active at all". Setting any profile switches it off |
-| Placeholders are resolved when the file is loaded | They are resolved **on read**, so a placeholder can point at a property from a completely different source |
+1. **Read "Before this note".** Brief — mostly the difference between a system property and an
+   environment variable, which turns out to matter more than it sounds.
+2. **Run `PropertySourceOrderTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-environment -am test -Dtest=PropertySourceOrderTest
+   ```
+   Proves the one structural fact this note rests on: the `Environment` is an ordered list, and
+   first hit wins.
+3. **Read "It is a list, not a map", then "Boot's order".**
+4. **Run and read `ProfileTest`**, then "Profiles". The `default` profile behaves differently from
+   how it reads.
+5. **Run and read `BootPrecedenceTest`** for the ordering Boot actually installs.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- If the same key is set in three places, which one wins, and why?
+- Does activating a profile replace `application.yaml` or add to it?
+- What does `@Profile("default")` actually mean?
+- Why can a placeholder in one file resolve to a value from a completely different source?
+
+---
+
+## Before this note
+
+**No earlier note is required.** [Property binding](property-binding.md) is the natural pair: this
+note is where values come from, that one is how they become typed objects. Reading this one first
+is slightly better, because binding operates on what the `Environment` resolves.
+
+**The Java you need:**
+
+*System properties and environment variables are not the same thing.* `System.getProperty("x")`
+reads a JVM property, set with `-Dx=...` or programmatically. `System.getenv("X")` reads a process
+environment variable, set by the shell or the container, and it is **immutable for the life of the
+process**. They have different naming conventions, different casing rules and different lifetimes,
+and Spring exposes them as two separate property sources rather than one.
+
+*Environment variable names are constrained.* By convention they are uppercase with underscores,
+and in most shells a dot is not a legal character in a name. So `my.app.read-timeout` simply cannot
+be set as an environment variable under that spelling. That constraint is the entire reason relaxed
+binding exists — and, importantly, the reason the translation is attached to the *environment
+variable source specifically* rather than applied everywhere.
+
+*`java.util.Properties` is a `Hashtable`.* Unordered, string-ish, and with no concept of precedence.
+Spring does not use it as the model for the `Environment` for exactly that reason: precedence is the
+whole point, and a plain map cannot express it.
 
 ---
 
@@ -122,6 +163,21 @@ value that must be present, even though `@ConfigurationProperties` is better for
 see [property binding](property-binding.md).
 
 → `PropertySourceOrderTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| The `Environment` is a map of properties | It is an **ordered list of maps**. Every lookup returns the first hit |
+| A profile-specific file replaces the base file | It is **additive**. `application.yaml` is still read, and only the keys the profile file mentions are overridden |
+| An empty value means unset | An empty string is a value, and it shadows every source below it |
+| `@Profile("default")` means "always" | It means "when no profile is active at all". Setting any profile switches it off |
+| Placeholders are resolved when the file is loaded | They are resolved **on read**, so a placeholder can point at a property from a completely different source |
 
 ---
 

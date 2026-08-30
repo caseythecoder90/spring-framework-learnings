@@ -14,7 +14,7 @@ described here.
 
 Reading it top to bottom works, but this order is faster:
 
-1. **Read "The Java underneath" below.** It is the corner of Java that annotations live in — not
+1. **Read "Before this note" below.** It is the corner of Java that annotations live in — not
    difficult, but most professional Java work never opens it. Skip a subsection if you can already
    state the answer without checking. About ten minutes.
 2. **Run the Java baseline tests and read them.**
@@ -46,9 +46,12 @@ Done in that order this note is self-contained. You should not need to look anyt
 
 ---
 
-## The Java underneath
+## Before this note
 
-Five facts. All plain Java, all pinned by `JavaAnnotationBaselineTest`.
+**This is the first note in the track**, so nothing precedes it. Read it before
+[the proxy model](proxies.md), which assumes Spring can already find an annotation.
+
+**The Java you need.** Five facts, all plain Java, all pinned by `JavaAnnotationBaselineTest`.
 
 ### An annotation is an interface
 
@@ -256,7 +259,7 @@ That `null` is silent. The same split exists as `isAnnotated` versus `hasAnnotat
 ## Synthesized annotations
 
 `synthesize()` returns a proxy carrying the merged, alias-resolved values — replacing the JVM's own
-proxy from "The Java underneath".
+proxy from "Before this note".
 
 - `annotationType()` is correct, and `equals` against a real annotation instance still works.
 - `getClass()` is a proxy class, so never switch on it.

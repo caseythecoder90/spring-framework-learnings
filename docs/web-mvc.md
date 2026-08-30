@@ -8,16 +8,64 @@ lines. Read it once and every question in this note has an obvious place to look
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| A filter and an interceptor are much the same thing | The filter is **outside** the `DispatcherServlet`. An exception thrown in one never reaches `@ControllerAdvice` |
-| `postHandle` always runs | It is skipped whenever the handler throws. `afterCompletion` is the one that always runs |
-| An unannotated method parameter is ignored | A simple type becomes `@RequestParam`; a **complex type becomes `@ModelAttribute`**, bound from query parameters, not from the body |
-| `@ExceptionHandler` methods are tried in the order written | The one **closest to the thrown type** wins, and the controller's own are searched before any advice |
-| `@Valid` is implied by the constraint annotations | Without `@Valid` the constraints are inert |
-| A filter sees the exception my controller threw | It sees a `ServletException` wrapping it, or a status code if something resolved it |
+1. **Read "Before this note".** The Servlet API, briefly. Spring MVC is one servlet, and knowing
+   what a servlet and a filter are makes the whole request path legible.
+2. **Run `RequestLifecycleTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-web -am test -Dtest=RequestLifecycleTest
+   ```
+   It records the order of filter, interceptor, handler and advice for one request.
+3. **Read "One request, end to end"** against that recording.
+4. **Run and read `ArgumentBindingTest`**, then "Getting values into the method". The unannotated
+   complex parameter is the surprise here.
+5. **Run and read `ExceptionHandlingTest`**, then the exception section. The resolution order is
+   worth internalising before you need it at 2am.
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- In what order do my filter, interceptor, controller and `@ControllerAdvice` actually run?
+- Why does an exception from a filter never reach my `@ControllerAdvice`?
+- Why is an unannotated method parameter bound from query parameters instead of the body?
+- Which `@ExceptionHandler` wins when several could match?
+
+---
+
+## Before this note
+
+**No earlier note is strictly required**, though [the proxy model](proxies.md) helps, since
+controllers are ordinary beans and can be proxied like any other.
+
+**The Servlet API you need.** Four ideas:
+
+*A servlet handles requests for a URL pattern.* Spring MVC is **one** servlet —
+`DispatcherServlet` — mapped by default to `/`. Everything Spring does with routing, argument
+binding and view resolution happens *inside* that single servlet.
+
+*A filter wraps the servlet.* Filters form a chain around it:
+
+```
+filter → filter → DispatcherServlet → controller
+```
+
+That nesting is the single most consequential fact in this note. Everything Spring MVC knows about
+— interceptors, `@ControllerAdvice`, `@ExceptionHandler` — lives **inside** the servlet. A filter is
+outside it, so an exception thrown in a filter has already left Spring MVC's reach, and the servlet
+container handles it instead.
+
+*Exceptions crossing the servlet boundary get wrapped.* The Servlet spec says a servlet may throw
+`ServletException` or `IOException`, so anything else is wrapped on the way out. A filter's `catch`
+block sees a `ServletException`, and the exception your controller actually threw is one
+`getCause()` away.
+
+*One request, one thread.* The classic servlet model assigns a thread per request for the duration.
+That is why `ThreadLocal`-based mechanisms — the security context, request scope, and a
+[transaction](transactions.md) — work at all in a web application, and why they stop working the
+moment you hand the work to another thread.
 
 ---
 
@@ -118,6 +166,22 @@ For a consistent error format across an application, extend `ResponseEntityExcep
 `ProblemDetail` bodies.
 
 → `ExceptionHandlingTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| A filter and an interceptor are much the same thing | The filter is **outside** the `DispatcherServlet`. An exception thrown in one never reaches `@ControllerAdvice` |
+| `postHandle` always runs | It is skipped whenever the handler throws. `afterCompletion` is the one that always runs |
+| An unannotated method parameter is ignored | A simple type becomes `@RequestParam`; a **complex type becomes `@ModelAttribute`**, bound from query parameters, not from the body |
+| `@ExceptionHandler` methods are tried in the order written | The one **closest to the thrown type** wins, and the controller's own are searched before any advice |
+| `@Valid` is implied by the constraint annotations | Without `@Valid` the constraints are inert |
+| A filter sees the exception my controller threw | It sees a `ServletException` wrapping it, or a status code if something resolved it |
 
 ---
 

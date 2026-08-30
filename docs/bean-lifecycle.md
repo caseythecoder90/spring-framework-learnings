@@ -207,8 +207,6 @@ surprise people:
 
 ---
 
----
-
 ## Review checklist
 
 - [ ] Does anything use a field-injected dependency from the constructor? It is null there.

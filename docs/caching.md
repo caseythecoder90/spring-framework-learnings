@@ -10,15 +10,53 @@ interceptor.
 
 ---
 
-## The short version
+## How to work through this note
 
-| Assumption | Reality |
-|---|---|
-| The cache key identifies the method | It does **not**. It is the arguments, and only the arguments |
-| Two methods in one cache are independent | They **share entries** if the arguments match |
-| A `null` result means a cache miss next time | `null` is cached like any other value |
-| `condition` and `unless` are two spellings of one thing | `condition` runs **before** the method, `unless` **after** |
-| A private `@Cacheable` method still caches | It is silently ignored |
+1. **Read "Before this note".** Short — mostly `equals`/`hashCode`, which is what a cache key is.
+2. **Run `CacheKeyTest` and read it.**
+   ```bash
+   ./mvnw -pl labs/lab-caching -am test -Dtest=CacheKeyTest
+   ```
+   Read the second test carefully. It is a silent data leak, and it is nine lines of Spring source
+   away.
+3. **Read "The key does not include the method".**
+4. **Run and read `CacheSemanticsTest`**, then the sections on the three annotations, `condition`
+   versus `unless`, and cached nulls.
+5. **Read "The two ways caching quietly does nothing."**
+6. **Finish with "What this changes for you."**
+
+---
+
+## What you will be able to answer afterwards
+
+- What exactly is my cache key, and could two different methods produce the same one?
+- When does `condition` run compared with `unless`, and why does only one of them save the call?
+- Is a `null` result cached, or looked up again next time?
+- Why is my cache always cold, with no error anywhere?
+
+---
+
+## Before this note
+
+**Read [the proxy model](proxies.md) first.** Caching is an interceptor, and two of the three ways
+it silently does nothing come straight from that note.
+
+**The Java you need:**
+
+*A cache is a map, so a cache key is an `equals`/`hashCode` contract.* Two keys that are `equals`
+and share a `hashCode` are the same entry. Spring's default key for a single-argument method is
+**the argument itself**, so the argument's own `equals` decides what collides. For a `String` or a
+`Long` that is exactly what you want; for a mutable object with identity equality it means you will
+never get a hit.
+
+*Records give you `equals` and `hashCode` for free.* That makes a record an excellent composite
+cache key and a poor one if any component is mutable — mutate a field after storing and the entry
+becomes unreachable, because its hash no longer matches.
+
+*`ConcurrentHashMap` has no expiry.* Spring's simple cache manager is backed by one, so nothing ever
+leaves it. There is no TTL and no size bound; it grows until the heap runs out. Every real cache
+implementation — Caffeine, Redis — adds that back, which is why the default is for tests and
+demonstrations rather than production.
 
 ---
 
@@ -106,6 +144,21 @@ this repo; see [the proxy model](proxies.md).
 Both fail silently, and both look identical from outside: the cache is just always cold.
 
 → `CacheSemanticsTest`
+
+---
+
+## What this changes for you
+
+Now that the mechanism is in place, the short version — the things that are true and
+surprise people:
+
+| Assumption | Reality |
+|---|---|
+| The cache key identifies the method | It does **not**. It is the arguments, and only the arguments |
+| Two methods in one cache are independent | They **share entries** if the arguments match |
+| A `null` result means a cache miss next time | `null` is cached like any other value |
+| `condition` and `unless` are two spellings of one thing | `condition` runs **before** the method, `unless` **after** |
+| A private `@Cacheable` method still caches | It is silently ignored |
 
 ---
 
