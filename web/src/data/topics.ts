@@ -153,8 +153,10 @@ export const TOPICS: Topic[] = [
     slug: 'jdbctemplate',
     title: 'JdbcTemplate and DataSource',
     track: 'data',
-    blurb: 'Connection handling, pooling, and how a vendor SQLException becomes a DataAccessException.',
-    status: 'next',
+    blurb: 'Where the connection comes from, exception translation, and the three query APIs.',
+    status: 'shipped',
+    lab: 'lab-jdbc',
+    tests: 18,
   },
   {
     slug: 'isolation',

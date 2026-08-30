@@ -1,0 +1,50 @@
+{
+  "title": "What JdbcTemplate does around your SQL",
+  "summary": "Take a connection, run the statement, map the rows, translate any failure, release the connection. The interesting parts are the first and last: where the connection comes from, and what happens to a SQLException.",
+  "entry": "Put a breakpoint in DataSourceUtils.doGetConnection and run one query with a transaction and once without. The branch you land on is the whole lesson.",
+  "steps": [
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.core.JdbcTemplate",
+      "method": "execute",
+      "notice": "The template method every other operation funnels into. query, update and batchUpdate are all thin wrappers that supply a callback; read this one and you have read them all."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.datasource.DataSourceUtils",
+      "method": "doGetConnection",
+      "notice": "The branch that matters. If a transaction has bound a connection to this thread it is reused; otherwise a fresh one is taken from the pool. This is why two statements outside a transaction use two connections and two inside it use one."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.datasource.DataSourceUtils",
+      "method": "releaseConnection",
+      "notice": "The mirror image: a connection belonging to a transaction is left alone, and only a standalone one is actually closed. Getting this wrong by hand is how connection leaks happen."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.support.JdbcAccessor",
+      "method": "getExceptionTranslator",
+      "notice": "Where the default translator is chosen. Since Framework 6 it is SQLExceptionSubclassTranslator unless you supply an error-codes file, in which case the old vendor-code translator is used instead."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.support.SQLExceptionSubclassTranslator",
+      "method": "doTranslate",
+      "notice": "Maps JDBC 4 SQLException subclasses onto Spring's DataAccessException hierarchy. Short and worth reading, because it is what makes a duplicate key mean the same thing on every database."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator",
+      "method": "translate",
+      "notice": "The chain: custom translator, then the specific one, then the fallback. Nothing ever escapes as a checked SQLException, which is why no Spring data access method declares throws."
+    },
+    {
+      "module": "spring-jdbc",
+      "class": "org.springframework.jdbc.core.simple.DefaultJdbcClient",
+      "method": "sql",
+      "notice": "The Framework 6.1 facade. It delegates to JdbcTemplate or NamedParameterJdbcTemplate depending on which param() overload you use, and adds optional() so a missing row is not an exception."
+    }
+  ],
+  "note": "jdbctemplate"
+}

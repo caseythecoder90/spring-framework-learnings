@@ -30,6 +30,7 @@
     <module>labs/lab-retry</module>
     <module>labs/lab-caching</module>
     <module>labs/lab-transactions</module>
+    <module>labs/lab-jdbc</module>
     <module>labs/lab-startup</module>
     <module>labs/lab-binding</module>
     <module>labs/lab-environment</module>
